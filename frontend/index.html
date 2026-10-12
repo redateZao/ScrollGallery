@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ScrollGallery</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div id="app">
+        <!-- 主区域：图片预览 -->
+        <main id="viewer">
+            <img id="empty-image" src="idle.png" alt="">
+            <p id="empty-hint">单击图片开始浏览</p>
+        </main>
+
+        <!-- 右侧栏：目录导航 -->
+        <aside id="sidebar">
+            <div id="sidebar-content">
+                <div id="dir-path"></div>
+                <!-- 「全部 / 收藏」切换：面包屑下方、目录列表上方的宽分段按钮（收藏内容待实现） -->
+                <div id="dir-filter">
+                    <button class="dir-filter-btn active" data-filter="all" type="button">全部</button>
+                    <button class="dir-filter-btn" data-filter="fav" type="button">收藏</button>
+                </div>
+                <ul id="dir-list"></ul>
+                <div id="thumb-grid"></div>
+            </div>
+        </aside>
+
+        <!-- 侧栏宽度拖拽把手（贴侧栏左缘；不持久化，刷新回默认宽度） -->
+        <div id="sidebar-resizer"></div>
+
+        <!-- 侧栏开关：固定在窗口右上角，不随侧栏移动 -->
+        <button id="sidebar-toggle">
+            <!-- 侧栏展开时显示：»（点击向右收起） -->
+            <svg class="icon-collapse" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="9 18 15 12 9 6"></polyline>
+            </svg>
+            <!-- 侧栏收起时显示：«（点击向左展开） -->
+            <svg class="icon-expand" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="15 18 9 12 15 6"></polyline>
+            </svg>
+        </button>
+
+        <!-- 收藏排序切换：与「回到顶部」并排、位于其左侧；仅「收藏」清单由 JS 加 .show 出现。
+             点击在升序(先收藏在前)/降序(后收藏在前，默认)间切换；两个图标由当前方向决定显哪一个。
+             DOM 顺序：本按钮须排在「回到顶部」之前，CSS 才能用 #fav-sort.show ~ #back-to-top 成对居中。 -->
+        <button id="fav-sort" class="fav-sort-desc">
+            <!-- 升序：条由短到长、箭头向上 -->
+            <svg class="icon-asc" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M4 6h4M4 12h7M4 18h11"></path>
+                <path d="M18 18V6M15 9l3-3 3 3"></path>
+            </svg>
+            <!-- 降序：条由长到短、箭头向下 -->
+            <svg class="icon-desc" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M4 6h11M4 12h7M4 18h4"></path>
+                <path d="M18 6v12M15 15l3 3 3-3"></path>
+            </svg>
+        </button>
+
+        <!-- 回到顶部：与「收藏排序」并排时居右、单独出现时居中于侧栏；把侧栏内容滚回顶部；原型/颜色/透明度与侧栏开关一致 -->
+        <button id="back-to-top">
+            <!-- 单 path 两子路径绘成向上箭头：半透明描边在顶点交汇处不会叠色变深（同放大加号的画法） -->
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 19V5M5 12l7-7 7 7"></path>
+            </svg>
+        </button>
+
+        <!-- 悬浮工具栏：预览区右下角，功能后续对接 -->
+        <div id="toolbar">
+            <button class="tool-btn" id="btn-zoom-in">
+                <!-- 加号用单一 path 的两条子路径绘成：同一次描边绘制，交叉口不会因半透明叠加而变深 -->
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                    <path d="M12 5V19M5 12H19"></path>
+                </svg>
+            </button>
+            <button class="tool-btn" id="btn-zoom-out">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+            </button>
+            <button class="tool-btn" id="btn-prev">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="18 15 12 9 6 15"></polyline>
+                </svg>
+            </button>
+            <button class="tool-btn" id="btn-next">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="6 9 12 15 18 9"></polyline>
+                </svg>
+            </button>
+            <button class="tool-btn" id="btn-fullscreen">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>
+                </svg>
+            </button>
+            <button class="tool-btn" id="btn-play">
+                <svg class="icon-play" viewBox="0 0 24 24" fill="currentColor">
+                    <polygon points="6 4 20 12 6 20 6 4"></polygon>
+                </svg>
+                <svg class="icon-pause" viewBox="0 0 24 24" fill="currentColor">
+                    <rect x="6" y="4" width="4" height="16"></rect>
+                    <rect x="14" y="4" width="4" height="16"></rect>
+                </svg>
+            </button>
+            <button class="tool-btn" id="btn-settings">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="3"></circle>
+                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                </svg>
+            </button>
+            <button class="tool-btn" id="btn-toggle-ui">
+                <!-- 默认显示：眼睛（点击隐藏其余按钮） -->
+                <svg class="icon-eye" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                    <circle cx="12" cy="12" r="3"></circle>
+                </svg>
+                <!-- UI 隐藏时显示：闭眼（点击恢复其余按钮） -->
+                <svg class="icon-eye-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                    <line x1="1" y1="1" x2="23" y2="23"></line>
+                </svg>
+            </button>
+        </div>
+
+        <!-- 页码指示：预览区（main）右上角，悬浮于图片上方，如 3/13 -->
+        <div id="page-indicator"></div>
+
+        <!-- 悬浮滚动条：覆盖在预览区右缘之上，不占用图片布局宽度 -->
+        <div id="vscrollbar"><div class="thumb"></div></div>
+
+        <!-- 设置面板：点击设置按钮弹出在其左侧 -->
+        <div id="settings-panel">
+            <div class="setting-row">
+                <div class="setting-label">
+                    <span>图片间距</span>
+                    <span class="setting-value" id="gap-value">8</span>
+                </div>
+                <input type="range" id="gap-slider" min="0" max="20" step="1" value="8">
+                <div class="slider-ticks" style="--tick-intervals: 20"></div>
+            </div>
+            <div class="setting-row">
+                <div class="setting-label">
+                    <span>播放速度</span>
+                    <span class="setting-value" id="speed-value">40</span>
+                </div>
+                <input type="range" id="speed-slider" min="10" max="160" step="10" value="40">
+                <div class="slider-ticks" style="--tick-intervals: 15"></div>
+            </div>
+            <!-- 开关：开启后，点小眼睛会连同页码与侧栏“展开”态按钮一起隐藏（侧栏展开时的“收起”态按钮保留） -->
+            <div class="setting-row setting-row-toggle">
+                <span class="toggle-text">隐藏对页码和侧栏开关也生效</span>
+                <label class="switch">
+                    <input type="checkbox" id="hide-extra-toggle">
+                    <span class="switch-track"><span class="switch-knob"></span></span>
+                </label>
+            </div>
+            <!-- 开关：开启后，进入全屏时自动收起侧栏（仅进入时触发一次；已收起则不动作，退出全屏不受影响）-->
+            <div class="setting-row setting-row-toggle">
+                <span class="toggle-text">进入全屏时自动收起侧栏</span>
+                <label class="switch">
+                    <input type="checkbox" id="collapse-fullscreen-toggle">
+                    <span class="switch-track"><span class="switch-knob"></span></span>
+                </label>
+            </div>
+            <!-- 开关：开启后，退出全屏时自动展开侧栏（仅退出时触发一次；已展开则不动作，进入全屏不受影响）-->
+            <div class="setting-row setting-row-toggle">
+                <span class="toggle-text">退出全屏时自动展开侧栏</span>
+                <label class="switch">
+                    <input type="checkbox" id="expand-exitfullscreen-toggle">
+                    <span class="switch-track"><span class="switch-knob"></span></span>
+                </label>
+            </div>
+            <!-- 打开快捷键设置面板（屏幕居中弹出）-->
+            <button id="shortcut-settings-btn">快捷键和其它设置</button>
+        </div>
+
+        <!-- 快捷键设置面板：屏幕居中弹出（改键交互已实装，见 note/前端现状记录.md §6.1） -->
+        <div id="shortcut-overlay">
+            <div id="shortcut-panel">
+                <div id="shortcut-header">
+                    <span class="shortcut-title">快捷键和其它设置</span>
+                    <button id="shortcut-close">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                    </button>
+                </div>
+                <div id="shortcut-columns">
+                    <ul id="shortcut-list"><!-- 键盘快捷键（左栏），由 main.js 渲染 --></ul>
+                    <ul id="mouse-list"><!-- 鼠标点击设置（右栏），由 main.js 渲染 --></ul>
+                </div>
+                <div id="shortcut-footer">
+                    <button id="shortcut-save">保存</button>
+                    <button id="shortcut-cancel">取消</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 进度条弹窗：单击图片中间下方区弹出（出现动画同设置/快捷键面板） -->
+        <div id="page-jump">
+            <div id="page-jump-label">
+                <span class="page-jump-word">第</span>
+                <button id="page-jump-current">1</button>
+                <input id="page-jump-input" type="text" inputmode="numeric" autocomplete="off">
+                <span class="page-jump-word">页，共 <span id="page-jump-total">0</span> 页</span>
+            </div>
+            <div id="page-jump-bar">
+                <button class="page-jump-arrow" id="page-jump-arrow-left">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="15 18 9 12 15 6"></polyline>
+                    </svg>
+                </button>
+                <span class="page-jump-num page-jump-min">1</span>
+                <div class="page-jump-track">
+                    <div class="page-jump-ticks"></div>
+                    <div class="page-jump-thumb"></div>
+                </div>
+                <span class="page-jump-num page-jump-max">30</span>
+                <button class="page-jump-arrow" id="page-jump-arrow-right">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="9 18 15 12 9 6"></polyline>
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        <!-- 全屏退出不再提供自制按钮：仅靠 Esc（Fullscreen API 原生行为）退出 -->
+    </div>
+
+    <script src="js/api.js"></script>
+    <script src="js/main.js"></script>
+    <script src="js/sidebar.js"></script>
+</body>
+</html>

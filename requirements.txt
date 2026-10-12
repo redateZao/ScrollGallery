@@ -1,0 +1,5 @@
+# 运行时依赖（后端图片服务 + pywebview 桌面窗口）
+# 安装：pip install -r requirements.txt
+pywebview==6.2.1
+Pillow==12.3.0
+bottle==0.13.4

@@ -1,0 +1,1500 @@
+/* ===== 主题变量（仅深色） ===== */
+:root {
+    color-scheme: dark; /* 让原生表单控件呈深色 */
+    --bg-main: #000000;
+    --bg-sidebar: #252526;
+    --bg-button: rgba(32, 32, 32, 0.15);
+    --bg-button-hover: #3a3a3b;
+    --text-primary: #e0e0e0;
+    --text-muted: #e1e1e1;
+    --border-color: #3d3d3d;
+    --sidebar-width: 472px;
+    --transition-speed: 0.25s;
+    --font-offset: 0px; /* 全局字号偏移：由快捷键面板「调整字体大小」滑块驱动，各处 font-size = calc(基准 + 本值) */
+    --tool-scale: 1; /* 工具栏按钮缩放倍率：由 JS 按字号档设定（特大=1.3、超大=1.5）；小/中/大=1 保持原样 */
+    --shortcut-scale: 1; /* 快捷键面板宽度额外倍率：由 JS 按字号档设定（大/特大/超大=1.1）；小/中=1 原样 */
+    --side-scale: 1; /* 侧栏开关 + 回到顶部按钮缩放倍率：由 JS 按字号档设定（特大=1.3、超大=1.6）；小/中/大=1 原样 */
+    /* 侧栏底部两个浮动按钮（回到顶部 / 收藏排序）的尺寸与间距：宽度自适应，绝不溢出侧栏。
+       两处 width 与两处偏移都引用 --fab-w，改宽度/间距只改这里、永不脱节。 */
+    --fab-gap: 12px;        /* 两按钮并排时它们之间的间距 */
+    --fab-margin: 10px;     /* 按钮组距侧栏左/右缘各保留的最小安全边距（侧栏收窄时靠它留出空隙）*/
+    --fab-w-max: 120px;     /* 单个按钮的理想最大宽（侧栏足够宽时用；随字号乘 --side-scale）*/
+    /* 实际单按钮宽 = “字号放大后的最大宽” 与 “侧栏收窄后每侧能容纳的宽” 取较小者：
+       后者 = (侧栏宽 - 两侧安全边距 - 中间间距) / 2，保证两个按钮加间距恰好不超出侧栏。 */
+    --fab-w: min(var(--fab-w-max) * var(--side-scale, 1), (var(--sidebar-width) - 2 * var(--fab-margin) - var(--fab-gap)) / 2);
+    --dir-top-extra: 0px; /* 面包屑顶部额外留白：由 JS 按字号档设定（特大=12px、超大=24px）；避开变大的侧栏开关按钮；其余=0 原样 */
+    --scroll-extra: 0px; /* 滚动条额外宽度：由 JS 按字号档设定（特大=+3px、超大=+6px）；基准 16px，小/中/大=0 原样 */
+    --page-scale: 1; /* 进度条轨道横向宽度缩放倍率：由 JS 按字号档设定（特大=1.1、超大=1.2）；小/中/大=1 原样 220px */
+    --page-down: 0px; /* 页码指示额外下移：由 JS 按字号档设定（特大=10px、超大=20px）；小/中/大=0 原样 */
+    --image-gap: 8px; /* 图片间距，之后做成可调 */
+    --image-width: calc(100vw * 3 / 7); /* 图片默认宽度：应用总宽度的 3/7，缩放功能将改此变量 */
+    --pan-x: 0px; /* 图片放大超盒子宽时的横向平移量：由 JS 写入，#image-strip 用 translateX 引用；默认 0 */
+    /* 侧栏缩略图盒子默认值（=“中”档）；实际由快捷键面板“预览图大小”滑块驱动，
+       启动时 main.js 按持久化档位覆盖 --thumb-w / --thumb-h，此处仅作无 JS 时的回退值 */
+    --thumb-w: 132px;   /* 盒子宽 */
+    --thumb-h: 180px;   /* 盒子高 */
+    --thumb-gap: 3px;  /* 盒子间距 */
+    --resizer-gap: 4px; /* 拖拽把手与边界之间的缝（同时用于把该缝涂成主区色） */
+
+    /* 预览区悬浮元素距「预览区右缘」的间隙：各自独立，改一个不影响其它。
+       每个元素的“展开态 calc(+ gap)”与“侧栏收起态 right”都引用同一个变量，两者永不脱节 */
+    --toolbar-gap: 29px;   /* 工具栏 */
+    --page-gap: 40px;      /* 页码指示 */
+    --settings-gap: 76px;  /* 设置面板（= 工具栏间隙20 + 按钮宽44 + 间隙12）*/
+}
+
+/* ===== 滚动条自定义（Chromium / WebView2 内核）===== */
+/* 作用于侧栏等原生滚动条；#viewer 的原生条已在下方置 width:0 隐藏，改用悬浮条 */
+::-webkit-scrollbar {
+    width: calc(16px + var(--scroll-extra, 0px)); /* 竖向滚动条宽度：基准 16px，随字号档变粗（特大=19、超大=22）；作用于侧栏等原生条 */
+    height: 11px; /* 横向滚动条高度 */
+}
+
+::-webkit-scrollbar-track { /* 轨道（滑槽） */
+    background: transparent; /* 想透明可填 transparent */
+}
+
+::-webkit-scrollbar-thumb { /* 滑块（拖动部分） */
+    background: rgba(141, 141, 141, 0.47); /* 主色 */
+    border-radius: 5px; /* 圆角；想要细一点可加 border: 2px solid transparent + background-clip */
+}
+
+::-webkit-scrollbar-thumb:hover { /* 鼠标悬停滑块 */
+    background: #646464;
+}
+
+::-webkit-scrollbar-corner { /* 横竖滚动条交汇的右下角 */
+    background: #1e1e1e;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+/* 关闭焦点环：本应用以鼠标点击与自定义快捷键为主，
+   元素聚焦（点击 / Tab / Alt 选中）不显示浏览器默认描边 */
+:focus {
+    outline: none;
+}
+
+html, body {
+    height: 100%;
+    background: var(--bg-main);
+    color: var(--text-primary);
+    font-family: "Segoe UI", "Microsoft YaHei", sans-serif;
+    overflow: hidden;
+}
+
+/* ===== 整体布局 ===== */
+#app {
+    display: flex;
+    height: 100vh;
+    position: relative; /* 供悬浮工具栏定位 */
+    /* 显式背景：不再依赖 body 透色。否则全屏时 #app 被推到 top layer、
+       背后是浏览器默认纯黑 ::backdrop，body 的 --bg-main 透不上来，预览区会变黑，
+       与 #sidebar::before 涂成 --bg-main 的那条缝不一致而显形 */
+    background: var(--bg-main);
+}
+
+/* ===== 主区域：图片预览 ===== */
+#viewer {
+    flex: 1;
+    min-width: 0;
+    position: relative;
+    display: flex;
+    flex-direction: column;   /* 空态：图片在上、“单击图片开始浏览”在下，竖排居中；加载图片后 has-images 改回 block，本行无效 */
+    align-items: center;
+    justify-content: center;
+    overflow-y: auto;
+    overflow-x: hidden;          /* 放大超盒子宽的图靠 --pan-x 平移看两侧，禁掉横向滚动条 */
+}
+
+/* 加载图片后：取消居中，回到正常文档流，内容超出时滚动 */
+#viewer.has-images {
+    display: block;
+}
+
+#empty-hint {
+    color: rgb(70, 70, 70);
+    font-size: calc(18px + var(--font-offset));
+    user-select: none;
+}
+
+/* 空态提示图（位于“单击图片开始浏览”上方）：宽度取 main 盒子比例、不随字号档位缩放 */
+#empty-image {
+    width: calc(100% * 2 / 7);   /* main 盒子（#viewer）宽度的 2/7；百分比相对 #viewer 内容宽解析，随窗口变但比例固定；想改比例只调这里的 2/7 */
+    height: auto;
+    max-width: 60%;
+    margin-bottom: 18px;
+    user-select: none;
+    -webkit-user-drag: none;
+    pointer-events: none;   /* 不拦截图片区交互 */
+}
+
+/* ===== 图片竖排列表 ===== */
+#image-strip {
+    display: flex;
+    flex-direction: column;
+    align-items: center; /* 图片宽度小于预览区时水平居中 */
+    gap: var(--image-gap);
+    padding: var(--image-gap) 0; /* 水平不留白，放到最大时图片可充满 viewer */
+    transform: translateX(var(--pan-x, 0px));  /* 横向平移载体：panX 由 JS 写入 CSS 变量，默认 0 不影响居中 */
+}
+
+/* 所有图片统一宽度，高度按比例自适应 */
+#image-strip img {
+    width: var(--image-width);
+    display: block;
+    /* 长按拖拽：禁用浏览器原生“拖图片”与选中，让左键拖拽完全交给我们的拖拽逻辑 */
+    user-select: none;
+    -webkit-user-drag: none;
+}
+
+/* 长按拖拽进行中：光标变为“已抓住”，提示图随光标上下走 */
+#viewer.drag-scrolling,
+#viewer.drag-scrolling * {
+    cursor: grabbing;
+}
+
+/* ===== 右侧栏 ===== */
+#sidebar {
+    position: relative;              /* 供 ::before 的主色缝条定位到侧栏左缘 */
+    width: var(--sidebar-width);
+    flex-shrink: 0;
+    background: var(--bg-sidebar);
+    /*border-left: 1px solid var(--border-color);*/
+    overflow: hidden;
+    transition: width var(--transition-speed) ease;
+}
+
+/* 侧栏左缘 --resizer-gap 涂成主区色：让拖拽把手与 main 之间的那条缝看起来属于 main 而非侧栏 */
+#sidebar::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: var(--resizer-gap);
+    height: 100%;
+    background: var(--bg-main);
+    pointer-events: none;   /* 纯装饰，不拦截侧栏内交互 */
+    z-index: 1;
+}
+
+#sidebar.collapsed {
+    width: 0;
+    border-left-color: transparent;
+}
+
+/* 内容固定宽度，收缩时被裁剪而不是重排，保证动画平滑 */
+#sidebar-content {
+    width: var(--sidebar-width);
+    height: 100%;
+    padding: 12px calc(12px - var(--scroll-extra, 0px)) 12px 26px; /* 右 padding 随滚动条变粗等量缩小（特大-3、超大-6），补偿原生条多吃宽度，使内容区恒为 SW-54、缩略图列数逐像素不变；「中」=12px 原样 */
+    overflow-y: auto;
+}
+
+/* ===== 侧栏开关按钮（固定在窗口右上角） ===== */
+#sidebar-toggle {
+    position: fixed;
+    top: 20px;
+    right: 50px; /* 向左避开预览区滚动条 */
+    z-index: 10;
+    width: calc(60px * var(--side-scale, 1));
+    height: calc(34px * var(--side-scale, 1));
+    border: none; /* 仅去掉侧栏开关按钮的边框（局部覆盖，不影响全局 --border-color） */
+    border-radius: 6px;
+    background: var(--bg-button);
+    color: rgba(255, 255, 255, 0.4); /* 侧栏开关按钮专用色（已从全局 --text-primary 分离，不随其变动） */
+    font-size: calc(16px + var(--font-offset));
+    line-height: 1;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s ease;
+}
+
+#sidebar-toggle:hover {
+    background: rgba(48, 48, 48, 0.5);
+    color: rgb(255, 255, 255);
+}
+
+#sidebar-toggle svg {
+    width: calc(20px * var(--side-scale, 1));
+    height: calc(20px * var(--side-scale, 1));
+}
+
+/* 图标随侧栏状态切换：展开时显示 »，收起时显示 « */
+#sidebar-toggle .icon-expand {
+    display: none;
+}
+
+#sidebar.collapsed ~ #sidebar-toggle .icon-expand {
+    display: block;
+}
+
+#sidebar.collapsed ~ #sidebar-toggle .icon-collapse {
+    display: none;
+}
+
+/* 沉浸隐藏态（小眼睛点击）且开启该设定时：隐藏侧栏“展开”态按钮；
+   即侧栏已收起时（#sidebar.collapsed）按钮为“展开”角色，隐藏它；侧栏展开时的“收起”态按钮保留 */
+#app.hide-extra-ui #sidebar.collapsed ~ #sidebar-toggle {
+    display: none;
+}
+
+/* 仅“收缩侧栏”态生效：侧栏当前展开、按钮显示 » */
+#sidebar:not(.collapsed) ~ #sidebar-toggle {
+    /* 在这里写你针对收缩按钮的微调，比如 background / color */
+    background: rgba(52, 52, 52, 0.71);
+    color: rgba(255, 255, 255, 0.89);
+}
+
+#sidebar:not(.collapsed) ~ #sidebar-toggle:hover {
+    background: rgb(111, 111, 111);
+    color: rgb(255, 255, 255);
+}
+
+/* ===== 回到顶部按钮（与「收藏排序」在侧栏水平中线两侧并排；距底部 5% 侧栏高；原型/颜色/透明度与侧栏开关一致） ===== */
+#back-to-top {
+    position: fixed;
+    bottom: 5vh; /* 距窗口底部 = 5% 侧栏高度（侧栏满高 = 100vh）*/
+    /* 默认（仅「回到顶部」一个按钮时）：单独居中于侧栏水平中线（距右缘 --sidebar-width/2）；
+       transform:translateX(50%) 让 right 直接表示按钮中心距右缘的距离。
+       「收藏排序」出现时由下方 #fav-sort.show ~ #back-to-top 规则整体右移，成对居中。 */
+    right: calc(var(--sidebar-width) / 2);
+    transform: translateX(50%);
+    z-index: 10;
+    width: var(--fab-w);   /* 自适应宽：取“最大宽”与“侧栏收窄后可容纳宽”的较小者，绝不溢出侧栏（见 :root --fab-w）*/
+    height: calc(36px * var(--side-scale, 1));
+    border: none;
+    border-radius: 6px;
+    background: rgba(102, 102, 102, 0.32);
+    color: rgba(255, 255, 255, 0.42);
+    font-size: calc(16px + var(--font-offset));
+    line-height: 1;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s ease;
+}
+
+#back-to-top:hover {
+    background: rgb(111, 111, 111);
+    color: rgb(255, 255, 255);
+}
+
+#back-to-top svg {
+    width: calc(20px * var(--side-scale, 1));
+    height: calc(20px * var(--side-scale, 1));
+}
+
+/* 侧栏收起（宽 0）时无宿主，隐藏 */
+#sidebar.collapsed ~ #back-to-top {
+    display: none;
+}
+
+/* 注：沉浸隐藏模式（#app.hide-extra-ui）不影响本按钮，它始终随侧栏展开而可见。 */
+
+/* ===== 收藏排序切换按钮（与“回到顶部”并排，位于其左侧；整体居中于侧栏；仅「收藏」清单由 JS 加 .show 出现） ===== */
+#fav-sort {
+    position: fixed;
+    bottom: 5vh;                                      /* 与回到顶部同一水平线：距底部 5% 侧栏高 */
+    right: calc(var(--sidebar-width) / 2 + (var(--fab-w) + var(--fab-gap)) / 2);  /* 中线左侧：中心距右缘 = 半栏宽 + 半个“按钮宽+间距”（引用同一 --fab-w，与按钮实际宽度永远同步）*/
+    transform: translateX(50%);
+    z-index: 10;
+    width: var(--fab-w);   /* 自适应宽：取“最大宽”与“侧栏收窄后可容纳宽”的较小者，绝不溢出侧栏（见 :root --fab-w）*/
+    height: calc(36px * var(--side-scale, 1));
+    border: none;
+    border-radius: 6px;
+    background: rgba(102, 102, 102, 0.32);
+    color: rgba(255, 255, 255, 0.42);
+    font-size: calc(16px + var(--font-offset));
+    line-height: 1;
+    cursor: pointer;
+    display: none;                 /* 默认隐藏；收藏清单非空时 JS 加 .show 才显 */
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s ease;
+}
+
+#fav-sort.show {
+    display: flex;
+}
+
+/* 收藏排序按钮出现时：两按钮成对居中——回到顶部向右偏半个“按钮宽+间距”（收藏排序自身 right 已含向左的等量偏移）。
+   依赖 DOM 中 #fav-sort 排在 #back-to-top 之前（~ 只匹配后续兄弟）。 */
+#fav-sort.show ~ #back-to-top {
+    right: calc(var(--sidebar-width) / 2 - (var(--fab-w) + var(--fab-gap)) / 2);
+}
+
+#fav-sort:hover {
+    background: rgb(111, 111, 111);
+    color: rgb(255, 255, 255);
+}
+
+#fav-sort svg {
+    width: calc(20px * var(--side-scale, 1));
+    height: calc(20px * var(--side-scale, 1));
+    display: none;                 /* 两个图标默认都隐，按当前方向只显一个 */
+}
+
+/* 当前方向决定显哪一个：.fav-sort-desc → 降序箭头；否则 → 升序箭头 */
+#fav-sort.fav-sort-desc .icon-desc,
+#fav-sort:not(.fav-sort-desc) .icon-asc {
+    display: block;
+}
+
+/* 侧栏收起时无宿主，隐藏（特异性高于 .show，收起时即使加了 .show 也不显）*/
+#sidebar.collapsed ~ #fav-sort {
+    display: none;
+}
+
+/* ===== 侧栏宽度拖拽调节（仅当前会话生效，不持久化）===== */
+/* 把手整体落在侧栏内、并与边界留 4px 缝：既不压预览区的悬浮滚动条 #vscrollbar，
+   整条把手（含光标）都可拖，无“看得见却拖不动”的 padding 死区 */
+#sidebar-resizer {
+    position: absolute;
+    top: 0;
+    right: var(--sidebar-width);              /* 锚定到侧栏左缘（预览区与侧栏的边界）*/
+    transform: translateX(calc(100% + var(--resizer-gap)));  /* 右移自身宽+缝宽：完全落入侧栏且离边界 --resizer-gap；改宽度无需动这里 */
+    width: 12px;                              /* 整条都是拖动热区 */
+    height: 100%;
+    z-index: 30;
+    cursor: col-resize;
+    background: transparent;
+}
+
+/* 竖向指示线：平时透明，悬浮 / 拖动时显形 */
+#sidebar-resizer::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    /*left: 3px;*/
+    width: 8px;
+    height: 100%;
+    background: rgb(55, 55, 55);
+    opacity: 0;
+    transition: opacity 0.15s ease;
+}
+
+#sidebar-resizer:hover::after,
+#app.resizing #sidebar-resizer::after {
+    opacity: 0.7;
+}
+
+/* 侧栏收起时把手不可见（也无法拖） */
+#sidebar.collapsed ~ #sidebar-resizer {
+    display: none;
+}
+
+/* 拖动过程中关闭侧栏及联动元素的宽/位过渡，避免“橡皮筋”滞后 */
+#app.resizing #sidebar,
+#app.resizing #toolbar,
+#app.resizing #page-indicator,
+#app.resizing #vscrollbar {
+    transition: none;
+}
+
+/* ===== 悬浮工具栏（预览区右下角） ===== */
+#toolbar {
+    position: absolute;
+    right: calc(var(--sidebar-width) + var(--toolbar-gap)); /* 紧贴预览区右缘，避开侧栏 */
+    bottom: 24px;
+    z-index: 20;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    transition: right var(--transition-speed) ease; /* 与侧栏收放同步移动 */
+}
+
+/* 侧栏收起时，预览区占满窗口，工具栏贴到窗口右缘 */
+#sidebar.collapsed ~ #toolbar {
+    right: var(--toolbar-gap);
+}
+
+/* ===== 页码指示（预览区右上角，悬浮在图片上方） ===== */
+/* 与工具栏同侧定位（避开侧栏，侧栏收起时贴窗口右缘），z-index 高于图片不被覆盖 */
+#page-indicator {
+    position: absolute;
+    top: calc(40px + var(--page-down, 0px));   /* 基准 top 40px；特大/超大额外下移（+10/+20）；“中”=40px 原样 */
+    margin-top: 35px;
+    right: calc(var(--sidebar-width) + var(--page-gap));
+    z-index: 20;
+    padding: 6px 14px;
+    border-radius: 999px;
+    background: rgba(27, 27, 27, 0.3);
+    color: rgba(255, 255, 255, 0.7);
+    /*background: rgba(60, 60, 60, 0.3);*/
+    font-size: calc(16px + var(--font-offset));
+    text-align: center;
+    font-variant-numeric: tabular-nums; /* 等宽数字，数字变化时不抖动 */
+    letter-spacing: 0.5px;
+    /*backdrop-filter: blur(4px);*/
+    user-select: none;
+    pointer-events: none; /* 不拦截滚轮/点击，图片区交互不受影响 */
+    transition: right var(--transition-speed) ease;
+    display: none; /* 默认隐藏，加载图片后由 JS 显示 */
+}
+
+/* 侧栏收起时跟随工具栏贴到窗口右缘 */
+#sidebar.collapsed ~ #page-indicator {
+    right: var(--page-gap);
+}
+
+/* ===== 悬浮滚动条（覆盖在图片右缘之上，不占用布局宽度）===== */
+/* 隐藏 viewer 原生滚动条，回收它预留的宽度（黑边根源）；滚动能力由 overflow-y 保留 */
+#viewer::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+}
+
+/* 轨道容器：绝对定位跨在预览区右侧，整条永不拦截滚轮（pointer-events:none） */
+#vscrollbar {
+    position: absolute;
+    top: 0;
+    right: var(--sidebar-width); /* 紧贴预览区右缘，避开侧栏 */
+    width: calc(16px + var(--scroll-extra, 0px));
+    height: 100%;
+    z-index: 15;
+    opacity: 0;                 /* 默认隐藏；内容可滚动时 JS 加 .active 淡入 */
+    pointer-events: none;
+    transition: opacity 0.25s ease, right var(--transition-speed) ease;
+}
+
+#sidebar.collapsed ~ #vscrollbar {
+    right: 0;
+}
+
+#vscrollbar.active {
+    opacity: 1;
+}
+
+/* 滑块：颜色与上方原生 thumb 保持一致，可同处微调 */
+#vscrollbar .thumb {
+    position: absolute;
+    /*left: 2px;*/
+    width: calc(16px + var(--scroll-extra, 0px));
+    background: rgba(94, 94, 94, 0.71);
+    border-radius: 5px;
+    pointer-events: none;       /* 默认不拦截；.active 时才允许拖动 */
+    transition: background 0.15s ease;
+}
+
+/* 可滚动时滑块才接受鼠标拖动（轨道其余区域仍透传给图片区滚轮） */
+#vscrollbar.active .thumb {
+    pointer-events: auto;
+    cursor: pointer;
+}
+
+#vscrollbar .thumb:hover,
+#vscrollbar.dragging .thumb {
+    background: rgba(125, 125, 125, 0.76);
+}
+
+/* 圆形半透明按钮，悬浮在图片上方 */
+.tool-btn {
+    width: calc(44px * var(--tool-scale, 1));
+    height: calc(44px * var(--tool-scale, 1));
+    border-radius: 50%;
+    border: none;
+    background: rgba(27, 27, 27, 0.1);
+    color: rgba(255, 255, 255, 0.4);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    /*backdrop-filter: blur(4px); !* 透过按钮轻微模糊下方图片 *!*/
+    transition: background 0.15s ease;
+}
+
+.tool-btn:hover {
+    background: rgba(48, 48, 48, 0.5);
+    color: rgb(255, 255, 255);
+}
+
+.tool-btn svg {
+    width: calc(22px * var(--tool-scale, 1));
+    height: calc(22px * var(--tool-scale, 1));
+}
+
+/* 播放按钮：播放中显示暂停图标 */
+#btn-play .icon-pause {
+    display: none;
+}
+
+#btn-play.playing .icon-pause {
+    display: block;
+}
+
+#btn-play.playing .icon-play {
+    display: none;
+}
+
+/* ===== 眼睛按钮：隐藏/显示工具栏其余按钮 ===== */
+/* 默认显示睛眼图标，隐藏闭眼图标 */
+#btn-toggle-ui .icon-eye-off {
+    display: none;
+}
+
+/* ui-hidden 时：隐藏除眼睛按钮外的所有按钮（display:none 使布局自动收拢） */
+#toolbar.ui-hidden .tool-btn:not(#btn-toggle-ui) {
+    display: none;
+}
+
+/* ui-hidden 时：眼睛图标切换为闭眼 */
+#toolbar.ui-hidden #btn-toggle-ui .icon-eye {
+    display: none;
+}
+
+#toolbar.ui-hidden #btn-toggle-ui .icon-eye-off {
+    display: block;
+}
+
+/* ui-hidden 时：眼睛按钮自身变得更透明（它不受隐藏影响，故单独弱化存在感）。
+   只作用于 #btn-toggle-ui，不影响其它按钮；opacity 越小越透（0~1） */
+#toolbar.ui-hidden #btn-toggle-ui {
+    opacity: 0.30;
+}
+
+/* 隐藏态下悬浮到眼睛按钮（准备点它恢复）时变清晰，方便瞄准 */
+#toolbar.ui-hidden #btn-toggle-ui:hover {
+    opacity: 1;
+}
+
+/* ===== 设置面板（弹出在设置按钮左侧） ===== */
+#settings-panel {
+    position: absolute;
+    right: calc(var(--sidebar-width) + var(--settings-gap)); /* 工具栏右侧距 20 + 按钮宽 44 + 间隙 12 */
+    bottom: 20px; /* 与设置按钮底部对齐 */
+    z-index: 30;
+    width: calc(300px + var(--font-offset) * 14); /* 随字号加宽：「中」=300px 原貌，避免开关行文字（“隐藏…也生效”最长 13 字）变宽后把右侧开关挤出面板外 */
+    padding: 14px 16px;
+    background: rgba(37, 37, 38, 0.95);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    backdrop-filter: blur(6px);
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    /* 默认隐藏 */
+    opacity: 0;
+    transform: translateX(8px);
+    pointer-events: none;
+    transition: opacity 0.15s ease, transform 0.15s ease, right var(--transition-speed) ease;
+}
+
+#settings-panel.open {
+    opacity: 1;
+    transform: translateX(0);
+    pointer-events: auto;
+}
+
+/* 侧栏收起时跟随工具栏移动 */
+#sidebar.collapsed ~ #settings-panel {
+    right: var(--settings-gap);
+}
+
+.setting-row {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.setting-label {
+    display: flex;
+    justify-content: space-between;
+    font-size: calc(13px + var(--font-offset));
+}
+
+.setting-value {
+    color: var(--text-muted);
+}
+
+/* 滑块（WebView2 为 Chromium 内核，使用 -webkit- 伪元素） */
+#settings-panel input[type="range"] {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 4px;
+    background: var(--border-color);
+    border-radius: 2px;
+    outline: none;
+    cursor: pointer;
+}
+
+#settings-panel input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: var(--text-primary);
+}
+
+/* 刻度线（纯装饰；--tick-intervals 为档数减一，默认 12 对应 13 档） */
+.slider-ticks {
+    height: 5px;
+    margin: 0 7px; /* 大致对齐滑块圆点的移动范围 */
+    background-image: repeating-linear-gradient(
+            to right,
+            var(--text-muted) 0,
+            var(--text-muted) 1px,
+            transparent 1px,
+            transparent calc(100% / var(--tick-intervals, 12))
+    );
+    opacity: 0.5;
+}
+
+/* 设置面板内的“快捷键设置”按钮 */
+#shortcut-settings-btn {
+    width: 100%;
+    padding: 9px 12px;
+    background: var(--bg-button);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    color: var(--text-primary);
+    font-size: calc(13px + var(--font-offset));
+    cursor: pointer;
+    transition: background 0.15s ease;
+}
+
+#shortcut-settings-btn:hover {
+    background: var(--bg-button-hover);
+}
+
+/* ===== 设置面板内的开关（小滑块，表示 开启/关闭）===== */
+.setting-row-toggle {
+    flex-direction: row;              /* 覆盖 .setting-row 的纵向布局 */
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.setting-row-toggle .toggle-text {
+    font-size: calc(13px + var(--font-offset));
+    color: var(--text-primary);
+    line-height: 1.35;
+    white-space: nowrap;          /* 不换行 */
+}
+
+.switch {
+    position: relative;
+    display: inline-block;
+    flex-shrink: 0;
+    width: 40px;
+    height: 20px;
+}
+
+.switch input {               /* 隐藏的原生复选框，覆盖整个开关以供点击 */
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    margin: 0;
+    cursor: pointer;
+    z-index: 2;
+}
+
+.switch .switch-track {      /* 滑轨 */
+    position: absolute;
+    inset: 0;
+    background: var(--border-color);
+    border-radius: 999px;
+    transition: background 0.2s ease;
+}
+
+.switch .switch-knob {        /* 小圆点 */
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--text-primary);
+    transition: transform 0.2s ease;
+}
+
+.switch input:checked + .switch-track {
+    background: #4a6fa5;      /* 开启态底色（蓝） */
+}
+
+.switch input:checked + .switch-track .switch-knob {
+    transform: translateX(20px);
+}
+
+/* ===== 进度条弹窗（单击图片中间弹出；本轮仅样式，出现动画同设置/快捷键面板：淡入 + 上浮）===== */
+#page-jump {
+    position: fixed;
+    left: calc((100vw - var(--sidebar-width)) / 2); /* 默认水平居中于预览区；弹出时由 JS 按图片实际中心接管（centerPageJumpOnImage）*/
+    bottom: 48px;                                    /* 靠近底部 */
+    transform: translateX(-50%) translateY(12px);    /* 隐藏态：居中 + 停在最终位置下方，弹出时上浮到位 */
+    z-index: 40;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    /*gap: 10px;*/
+    padding: 7px 9px;
+    background: rgba(30, 30, 30, 0.76);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    backdrop-filter: blur(6px);
+    /* 出现动画与 #settings-panel / #shortcut-panel 同款：淡入 + 轻微位移 */
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.18s ease, transform 0.18s ease;
+}
+
+#page-jump.show {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateX(-50%) translateY(0);
+}
+
+/* 顶部标签行：第 [页码按钮] 页 */
+#page-jump-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.page-jump-word {
+    font-size: calc(16px + var(--font-offset));
+    color: rgb(223, 223, 223);
+}
+
+/* 数字按钮：显示当前页码，点击可输入跳转（样式草稿）；加宽、底色更浅 */
+#page-jump-current {
+    min-width: 72px;
+    /*height: 24px;*/
+    padding: 0 16px;
+    background: rgba(255, 255, 255, 0.16);
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    border-radius: 999px;
+    color: var(--text-primary);
+    font-size: calc(16px + var(--font-offset));
+    font-variant-numeric: tabular-nums;
+    cursor: pointer;
+    transition: background 0.15s ease;
+    margin-top: 4px;
+}
+
+#page-jump-current:hover {
+    background: rgba(255, 255, 255, 0.24);
+}
+
+/* 页码输入框：点数字按钮时替换按钮出现，外观与按钮一致；默认隐藏 */
+#page-jump-input {
+    display: none;
+    min-width: 48px;
+    width: 72px;
+    /*height: 24px;*/
+    padding: 0 16px;
+    background: rgba(255, 255, 255, 0.16);
+    border: 1px solid rgb(228, 228, 228);
+    border-radius: 999px;
+    color: var(--text-primary);
+    font-size: calc(16px + var(--font-offset));
+    font-variant-numeric: tabular-nums;
+    text-align: center;
+    outline: none;
+    margin-top: 4px;
+}
+
+/* 轨道行：左侧最小页码 + 中间固定长度轨道 + 右侧最大页码 */
+#page-jump-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.page-jump-num {
+    font-size: calc(16px + var(--font-offset));
+    color: rgb(223, 223, 223);
+    font-variant-numeric: tabular-nums;
+    min-width: 2ch;
+    text-align: center;
+    padding-bottom: 5px;
+}
+
+.page-jump-track {
+    position: relative;
+    width: calc(220px * var(--page-scale, 1));   /* 基准 220px，随字号档加宽（特大×1.1=242、超大×1.2=264）；“中”×1=220 原样 */
+    height: 16px;                 /* 上部放轨道线+滑块，下部放刻度梳齿（两行分离）*/
+    margin-top: 5px;
+}
+
+/* 顶部轨道细线：颜色/粗细与图片间距 range 轨道同款 */
+.page-jump-track::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    height: 4px;
+    background: var(--border-color);
+    border-radius: 2px;
+}
+
+/* 点击热区扩展：轨道视觉很窄，用一层透明的 ::after 向上/下/左右各外扩，
+   使这整块区域都能点击跳页，不必精准戳到细线；不影响布局与外观（滑块 z-index:1 仍在其上）*/
+.page-jump-track::after {
+    content: "";
+    position: absolute;
+    left: -4px;
+    right: -4px;
+    top: 50%;
+    height: 36px;
+    transform: translateY(-50%);
+}
+
+/* 每页一刻度：移到轨道下方的梳齿，不再与轨道线重叠（与 .slider-ticks 同样“线在上、齿在下”）*/
+.page-jump-ticks {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 7px;
+    height: 7px;
+    background-image: repeating-linear-gradient(
+            to right,
+            var(--text-muted) 0,
+            var(--text-muted) 1px,
+            transparent 1px,
+            transparent calc(100% / var(--tick-intervals, 29))
+    );
+    opacity: 0.5;
+}
+
+.page-jump-thumb {
+    position: absolute;
+    left: 0;                 /* 由 JS 按当前页在本窗口内的比例实时写 left */
+    top: 2px;                /* 骑在顶部轨道细线上（轨道中心 = y 2px）*/
+    transform: translate(-50%, -50%);
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: var(--text-primary);
+    cursor: pointer;
+    z-index: 1;              /* 浮于刻度之上 */
+}
+
+/* 左右翻页箭头：翻动进度条显示的页区间；到首/末区间时置灰禁用 */
+.page-jump-arrow {
+    flex-shrink: 0;
+    width: 34px;
+    height: 40px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    background: rgba(89, 89, 89, 0.7);
+    border: 1px solid rgba(89, 89, 89, 0.7);
+    border-radius: 6px;
+    color: rgb(226, 226, 226);
+    cursor: pointer;
+    transition: background 0.15s ease, opacity 0.15s ease;
+    margin-bottom: 3px;
+}
+
+.page-jump-arrow svg {
+    width: 30px;
+    height: 30px;
+}
+
+.page-jump-arrow:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.24);
+}
+
+/* 禁用态：灰色、不可点（用 opacity 淡化，保留描边轮廓）*/
+.page-jump-arrow:disabled {
+    opacity: 0.3;
+    cursor: default;
+}
+
+/* ===== 快捷键设置面板（屏幕居中，当前仅展示外观） ===== */
+#shortcut-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.45);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.18s ease;
+}
+
+#shortcut-overlay.open {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+#shortcut-panel {
+    width: calc((480px + var(--font-offset) * 20) * var(--shortcut-scale, 1)); /* 基础随字号加宽，再由 --shortcut-scale 在「大/特大/超大」档各 +10%（相对本档宽，非基于「中」）；「中」=1 → 480px 原貌；grid 1fr/1fr 保证两列等宽 */
+    max-width: 90vw;
+    padding: 20px 24px 24px;
+    background: var(--bg-sidebar);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+    transform: translateY(10px) scale(0.98);
+    transition: transform 0.18s ease;
+}
+
+#shortcut-overlay.open #shortcut-panel {
+    transform: translateY(0) scale(1);
+}
+
+#shortcut-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+}
+
+.shortcut-title {
+    font-size: calc(17px + var(--font-offset));
+    font-weight: 600;
+    color: var(--text-primary);
+    user-select: none;
+}
+
+#shortcut-close {
+    width: 28px;
+    height: 28px;
+    border: none;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s ease, color 0.15s ease;
+}
+
+#shortcut-close:hover {
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--text-primary);
+}
+
+#shortcut-close svg {
+    width: 18px;
+    height: 18px;
+}
+
+/* 两栏容器：左=键盘快捷键，右=鼠标点击设置，两栏等宽 */
+#shortcut-columns {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr)); /* 左右两列严格等宽 */
+    gap: 30px;
+    align-items: start;
+}
+
+#shortcut-list, #mouse-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+/* 键盘栏动作名等宽，使古典引导线的左端与键位帽都整齐对齐 */
+#shortcut-list .shortcut-action {
+    min-width: 4.2em;
+}
+
+.shortcut-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: calc(14px + var(--font-offset));
+}
+
+.shortcut-action {
+    color: var(--text-primary);
+    white-space: nowrap;
+    user-select: none;
+}
+
+/* 古典引导线：点线从动作名一路延伸到右侧控件（两栏都用） */
+.shortcut-leader {
+    flex: 1;
+    min-width: 20px;
+    border-bottom: 2px dotted var(--border-color);
+    transform: translateY(-3px);
+    margin-top: 10px;
+}
+
+/* 按键帽样式 */
+.shortcut-key {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 32px;
+    height: 26px;
+    padding: 0 9px;
+    background: var(--bg-button);
+    border: 1px solid var(--border-color);
+    border-bottom-width: 2px;
+    border-radius: 5px;
+    color: var(--text-primary);
+    font-family: "Consolas", "Segoe UI", monospace;
+    font-size: calc(13px + var(--font-offset));
+    white-space: nowrap;
+    user-select: none;
+    cursor: pointer;
+    transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+/* 悬浮：背景变浅，提示可点击改键 */
+.shortcut-key:hover {
+    background: var(--bg-button-hover);
+    border-color: #555555;
+}
+
+/* 修改模式：背景色闪烁，提示正在等待录入按键 */
+.shortcut-key.editing {
+    border-color: #7aa2dc;
+    color: #ffffff;
+    animation: shortcut-blink 1s ease-in-out infinite;
+}
+
+@keyframes shortcut-blink {
+    0%, 100% {
+        background: var(--bg-button);
+    }
+    50% {
+        background: #4a6fa5;
+    }
+}
+
+/* 撞键冲突：红框 + 抖动提示 */
+.shortcut-key.conflict {
+    border-color: #d97a7a;
+    color: #e79b9b;
+    animation: shortcut-shake 0.32s ease;
+}
+
+@keyframes shortcut-shake {
+    0%, 100% {
+        transform: translateX(0);
+    }
+    20% {
+        transform: translateX(-4px);
+    }
+    60% {
+        transform: translateX(4px);
+    }
+}
+
+/* 点击翻页的循环切换按钮：与按键帽同色系，固定宽度容纳三字（上一张/下一张/禁用） */
+.shortcut-cycle {
+    min-width: 64px;
+    height: 26px;
+    padding: 0 10px;
+    background: var(--bg-button);
+    border: 1px solid var(--border-color);
+    border-radius: 5px;
+    color: var(--text-primary);
+    font-family: "Segoe UI", "Microsoft YaHei", sans-serif;
+    font-size: calc(13px + var(--font-offset));
+    cursor: pointer;
+    outline: none;
+    transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.shortcut-cycle:hover {
+    background: var(--bg-button-hover);
+    border-color: #555555;
+}
+
+/* 空行间隔：把鼠标设置区与“预览图大小”隔开一行；高度与普通鼠标行（循环按钮 26px）齐平 */
+.shortcut-spacer {
+    height: 26px;
+}
+
+/* ===== 快捷键面板右栏：预览图大小滑块（与“播放速度”同款轨道；本轮仅外观，未接线）===== */
+.size-slider-row .size-slider-wrap {
+    flex: 1;                       /* 轨道区占据剩余宽度，右侧文字靠右 */
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+/* 轨道：与设置面板 range 完全同款（WebView2 为 Chromium 内核，用 -webkit- 伪元素）*/
+.size-slider-row input[type="range"].size-range {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 4px;
+    background: var(--border-color);
+    border-radius: 2px;
+    outline: none;
+    cursor: pointer;
+}
+
+.size-slider-row input[type="range"].size-range::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: var(--text-primary);
+}
+
+/* 右侧档位文字：定宽 + 居中，避免“小”↔“特大”切换时轨道长度拖动 */
+.size-slider-row .size-value {
+    flex-shrink: 0;
+    min-width: 2.4em;
+    text-align: center;
+    font-size: calc(13px + var(--font-offset));
+    color: var(--text-muted);
+    user-select: none;
+    padding-bottom: 10px;
+}
+
+/* 补“特大”一档的刻度：.slider-ticks 的重复渐变不画右边缘最后一条（正好压在元素右边被裁），
+   用 border-right 在最右端补一条 1px */
+.size-slider-row .size-ticks {
+    border-right: 1px solid var(--text-muted);
+}
+
+/* 面板底部：保存 / 取消 */
+#shortcut-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 22px;
+}
+
+#shortcut-footer button {
+    padding: 8px 20px;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    background: var(--bg-button);
+    color: var(--text-primary);
+    font-size: calc(13px + var(--font-offset));
+    cursor: pointer;
+    transition: background 0.15s ease;
+}
+
+#shortcut-footer button:hover {
+    background: var(--bg-button-hover);
+}
+
+/* ===== 侧栏目录导航 ===== */
+#dir-path {
+    font-size: calc(14px + var(--font-offset));   /* 面包屑基准字号：「中」=14px（原 12px，已调大）；其余档 = 14 + 字号偏移 */
+    line-height: 18px;
+    height: calc(98px + var(--font-offset) * 3 + var(--dir-top-extra, 0px)); /* 预留高度 = padding(46+10) + 两行(42)；两行随字号长高，顶部额外留白同步计入（「中」=98px）*/
+    color: var(--text-muted);
+    padding: calc(46px + var(--dir-top-extra, 0px)) 4px 10px 4px;   /* 顶部 padding 在特大/超大加大，把面包屑下推、避开变大的侧栏开关按钮 */
+    border-bottom: 1px solid var(--border-color);
+    margin-bottom: 8px;
+    overflow: hidden;          /* 兜底裁剪，第三行绝不溢出 */
+    user-select: none;
+}
+
+/* 文本裁剪交给内层 span（无 padding，line-clamp 才可靠）：最多两行，超出省略号 */
+.dir-path-text {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    word-break: break-all;     /* 路径无空格，允许任意位置换行 */
+    line-height: 1.5;          /* 行高随字号缩放（无单位比值 1.5）：「中」=14×1.5=21px，字号越大行距越松，消除两行紧贴与第二行降部（g 下钩）被裁 */
+    max-height: calc(42px + var(--font-offset) * 3); /* 预留两行 = 2×行高（=2×14×1.5=42）；随字号同步长高（「中」=42px） */
+}
+
+/* ===== 目录列表上方「全部 / 收藏」切换（宽分段按钮，两段等宽，随字号缩放）===== */
+#dir-filter {
+    display: flex;
+    margin: 2px 0 8px;              /* 上距面包屑分割线、下接目录列表 */
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    overflow: hidden;
+    user-select: none;
+}
+
+#dir-filter .dir-filter-btn {
+    flex: 1 1 0;                    /* 两段等宽平分 */
+    padding: 5px 0;
+    text-align: center;
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    font-size: calc(14px + var(--font-offset));
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease;
+}
+
+/* 两段中间竖分割线：第二段左边框 */
+#dir-filter .dir-filter-btn + .dir-filter-btn {
+    border-left: 1px solid var(--border-color);
+}
+
+#dir-filter .dir-filter-btn:hover {
+    background: rgba(255, 255, 255, 0.06);
+}
+
+#dir-filter .dir-filter-btn.active {
+    background: rgba(255, 255, 255, 0.10);
+    color: var(--text-primary);
+}
+
+#dir-list {
+    list-style: none;
+}
+
+/* 列表空态占位文字（如「收藏」无内容时）：绝对定位到 #sidebar 正中（脱离流、垂直居中，不随内容滚动），置灰、随字号缩放 */
+.dir-empty {
+    position: absolute;
+    top: 50%;
+    left: 0;
+    right: 0;
+    transform: translateY(-50%);   /* 参照最近的定位祖先 #sidebar，落在侧栏纵向正中 */
+    text-align: center;
+    color: rgb(120, 120, 120);
+    font-size: calc(16px + var(--font-offset));
+    user-select: none;
+    pointer-events: none;         /* 纯提示，不拦截交互 */
+}
+
+.dir-item {
+    position: relative;             /* 供内部绝对定位的收藏星 #dir-star 作为定位参照 */
+    display: flex;
+    align-items: flex-start;    /* 图标贴第一行顶部（名字换行时不再垂直居中） */
+    gap: 8px;
+    padding: 6px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    user-select: none;
+    font-size: calc(14px + var(--font-offset));
+    /* 收藏星单一尺寸源：改这三行，灰/黄星与右侧槽位自动同步，不再手算 */
+    --star-size: calc(24px + var(--font-offset));   /* 星本体边长 */
+    --star-pad-x: 8px;                              /* 星左右内边距合计（padding:2px 4px）*/
+    --star-right: 24px;                             /* 星距行右缘 */
+}
+
+.dir-item:hover {
+    background: rgba(255, 255, 255, 0.06);
+}
+
+.dir-item svg {
+    width: calc(16px + var(--font-offset));    /* 随字号缩放：「中」=16px 原貌，「大」=19px，与目录字(14→17px)般配 */
+    height: calc(16px + var(--font-offset));   /* 同上；用 width/height（盒本身）而非 padding，避开 border-box 坑 */
+    flex-shrink: 0;
+    color: #dcb67a; /* 文件夹黄 */
+    margin-top: 1px;   /* 下移 1px：用 margin（盒子外侧），避开 border-box 下 padding 会挤压 16px 内容区的坑 */
+}
+
+.dir-item.drive svg {
+    color: #7aa2dc; /* 盘符：硬盘蓝 */
+}
+
+.dir-item.file svg {
+    color: #8fbc8f; /* 图片文件：柔和绿 */
+}
+
+/* ===== 目录行收藏星 =====
+   绝对定位“悬浮”在行右端之上：脱离 flex 流 → 不占名字宽度，名字不再因它出现而提前截断。
+   top:50% + translateY(-50%) 相对整行(可两行)垂直居中；right 控制距右缘、想左右平移改这里。
+   默认隐藏、仅悬浮显示；用 .dir-item .dir-star（两个类）提高特异性，覆盖上方通用 .dir-item svg 的黄色/尺寸。 */
+.dir-item .dir-star {
+    display: none;
+    position: absolute;         /* 悬浮于文字之上，不占位 */
+    right: var(--star-right);   /* 距行右缘（统一用 --star-right）*/
+    top: 50%;                   /* 垂直居中于整行 */
+    transform: translateY(-50%);
+    margin-top: 0;              /* 覆盖 .dir-item svg 的 1px 下移 */
+    width: var(--star-size);
+    height: var(--star-size);
+    fill: currentColor;
+    stroke: none;
+    color: #9a9a9a;             /* 灰色版本（悬浮出现） */
+    pointer-events: auto;       /* 星星可点：切换收藏（JS 里 stopPropagation，不会误进入目录） */
+    cursor: pointer;
+    z-index: 2;                 /* 盖在文字与下方悬浮遮挡块(::after)之上 */
+    box-sizing: content-box;    /* padding 只撑大背景、星形本体尺寸仍由 width/height 决定 */
+    padding: 2px 4px;           /* 背景四周留白，避免文字紧贴星形 */
+    background: rgb(50,50,51);  /* 不透明底色遮挡背后文字；若想更贴合高亮行可改 rgb(50,50,51) */
+    border-radius: 4px;         /* 圆角小徽标 */
+}
+
+.dir-item:hover .dir-star {
+    display: block;             /* 仅悬浮显示；绝对定位悬浮于文字之上，不改变名字长度 */
+}
+
+/* 灰星悬浮遮挡块：星本体只有约 28px 见方，两行 / 超长名字会从星的上方·下方·右侧漏出、星挡不住。
+   给 li 加一个仅悬浮时出现的同色不透明块：竖向铺满整行(top:0/bottom:0)，横向从右缘盖到星左侧，
+   把漏出的文字遮掉，视觉如同名字在星处被截断。颜色 rgb(50,50,51) = 侧栏底 #252526 叠 hover 的
+   rgba(255,255,255,.06) 合成色，与高亮行无缝融合；若日后改了 hover 透明度或侧栏底色，需同步此色。
+   宽度沿用下方黄星 :has 槽位同一公式 → 灰星截断位置与黄星常显位置一致、不跳。
+   仅「确有灰星」的未收藏行悬浮时出现（:has(.dir-star)）：返回上级 / 盘符等无星行不再漏出遮挡灰底；绝对定位伪元素脱离 flex 流，不影响行高 / 布局；
+   pointer-events:none 不误挡行点击进入与星点击收藏。 */
+.dir-item:not(.fav-item):hover:has(.dir-star):not(:has(.dir-star.faved))::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    right: 0;
+    width: calc(var(--star-right) + var(--star-size) + var(--star-pad-x) + 6px);
+    background: rgb(50, 50, 51);
+    border-top-right-radius: 4px;
+    border-bottom-right-radius: 4px;
+    pointer-events: none;
+    z-index: 1;
+}
+
+.dir-item .dir-star.faved {
+    display: block;             /* 已收藏：常驻显示（不依赖悬浮） */
+    color: #f0c674;             /* 黄色版本 */
+    /* 「全部」黄星：仍绝对定位（不参与 flex 测高 → 不增高 li 盒子），与灰星同 right；
+       名字避让靠下方 :has 预留的右侧槽位（槽位由 --star-* 变量自动算，改星星尺寸无需重算）。 */
+    right: var(--star-right);
+}
+
+/* 「全部」里有黄星的行：右侧预留黄星槽位，名字提前换行不被遮（仅命中时生效；灰星行不变）。
+   槽位 = 星距右缘 + 星本体宽 + 星左右内边距 + 6px 文字间隙，全部引用 --star-* 变量，
+   改 .dir-item 里的 --star-size/--star-right 时槽位会自动跟上，不会再重叠。 */
+.dir-item:not(.fav-item):has(.dir-star.faved) {
+    padding-right: calc(var(--star-right) + var(--star-size) + var(--star-pad-x) + 6px);
+}
+
+/* ===== 收藏行：[预览图] 目录名（在 .dir-item 基础上覆盖，仅作用于 .fav-item，不影响「全部」） ===== */
+.fav-item {
+    align-items: center;                                  /* 名字相对预览图垂直居中（覆盖 .dir-item 的 flex-start） */
+    font-size: calc(14px + var(--font-offset));           /* 收藏名比「全部」(基准14px) 大 2px；仍随字号缩放 */
+    /* 单行行高 = 收藏字号 × 1.2857（与 .dir-name 行高比一致）；预览图高 = 5 倍此值，名字最多 5 行 */
+    --fav-line-h: calc((14px + var(--font-offset)) * 1.2857);
+}
+
+/* 预览图：宽:高 = 2.5:3（竖版），高 = 5 行行高（改倍数请同步改下面 .dir-name 的 line-clamp） */
+.fav-thumb {
+    position: relative;                                   /* 供内部空集图标绝对居中 */
+    flex-shrink: 0;
+    height: calc(var(--fav-line-h) * 5);
+    width: calc(var(--fav-line-h) * 5 * 2.5 / 3);
+    border-radius: 6px;
+    overflow: hidden;
+    background: rgb(50, 50, 50);                          /* 灰色空占位框：无图 / 加载失败时露出底色 */
+}
+
+.fav-thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;                                    /* 裁剪填满，铺满盒子不留空隙 */
+    display: block;
+}
+
+/* 无图片时的空集图标：居中，取盒子 60% 尺寸（盒为 2.5:3 竖版，宽<高，svg 等比 meet 后圆形直径≈盒子宽的 60%），灰色 */
+.fav-thumb .fav-empty-icon {
+    position: absolute;
+    inset: 0;
+    margin: auto;                                         /* 固定尺寸 + inset:0 + auto 外边距 → 水平垂直都居中 */
+    width: 60%;
+    height: 60%;
+    color: #4b4b4b;                                       /* 比灰底略亮的灰，能看清又不抢眼 */
+}
+
+/* 收藏目录名：最多 5 行（=预览图 5 行高），5 行塞不下才省略号截断；flex:1 占满剩余宽度，让星紧随其右 */
+.fav-item .dir-name {
+    flex: 1 1 auto;
+    -webkit-line-clamp: 5;
+    padding-left: 5px;
+}
+
+/* 收藏行右侧「星占位区」整体可点：用一个 .fav-star-slot 容器作为 flex 子项，
+   纵向 align-self:stretch 撑满整行、横向保留占位宽（含右侧空隙），于是星的上/下/右那片
+   区域都能点（取消/收藏），而星本体尺寸不变。星(svg)嵌在容器里，仍保持原视觉大小。 */
+.fav-star-slot {
+    align-self: stretch;        /* 撑满整行高度 → 星上方/下方的空白也可点 */
+    display: flex;
+    align-items: center;        /* 星垂直居中 */
+    justify-content: flex-end;  /* 星靠右，与原来紧贴右缘一致 */
+    flex-shrink: 0;             /* 占位宽度不被长名字压缩（名字让出后换行环绕）*/
+    padding-right: 20px;        /* 原 margin-right 转为 padding：这段右空隙也纳入可点区域 */
+    cursor: pointer;
+}
+
+/* 收藏行的星本体：嵌在 .fav-star-slot 内，取消基类的绝对定位悬浮，回到常规流并保持原尺寸 */
+.fav-item .dir-star {
+    position: static;           /* 取消 .dir-star 的绝对定位悬浮 */
+    transform: none;            /* 取消基类 translateY(-50%) */
+    display: block;             /* 收藏行星常驻：黄/灰两种状态都可见（便于点灰星重新收藏）*/
+    color: #9a9a9a;             /* 未收藏=灰色（.faved 时由下方高特异性规则覆盖成黄色）*/
+}
+
+/* ===== 全屏模式 ===== */
+/* 工具栏保持与非全屏一致的纵向排列，不做切换；退出全屏仅靠 Esc（无自制退出按钮） */
+
+.dir-name {
+    min-width: 0;                    /* flex 子项：可收缩到容器宽以内才能正确换行 */
+    display: -webkit-box;
+    -webkit-line-clamp: 2;           /* 最多两行：一行放得下就只占一行，不够才升到两行（自适应高度，不定死 max-height） */
+    -webkit-box-orient: vertical;
+    overflow: hidden;                /* 第二行仍不够 → 末尾省略号（交给 line-clamp） */
+    word-break: break-all;           /* 激进：任意位置可断行（含无空格的超长词） */
+    line-height: 1.2857;             /* 行高随字号缩放（比值 =18/14）：「中」≈18px 原貌，字号越大行距越松，消除两行紧贴与第二行降部（g 下钩）被裁 */
+}
+
+/* ===== 侧栏缩略图网格（图片类条目）=====
+   目录仍竖向排在上方；图片以固定盒子网格排列（从左到右、从上到下），
+   每行能塞几个由侧栏实际宽度自动决定（flex-wrap 换行）。 */
+#thumb-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--thumb-gap);
+    justify-content: flex-start;
+    align-content: flex-start;
+    margin-top: 10px;
+}
+
+.thumb-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    /*gap: 4px;*/
+    width: var(--thumb-w);
+    cursor: pointer;
+    user-select: none;
+    padding-bottom: 3px;
+}
+
+.thumb-box {
+    width: var(--thumb-w);
+    height: var(--thumb-h);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    border-radius: 6px;
+    background: rgb(50, 50, 50);
+    border: 1px solid rgba(46, 46, 47, 0);
+    transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+/* 图片顶满盒子内缘并保持比例：长图顶高、宽图顶两侧（object-fit: contain）*/
+.thumb-box img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    display: block;
+}
+
+.thumb-item:hover .thumb-box {
+    border-color: rgb(54,54,55);
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.thumb-name {
+    font-size: calc(14px + var(--font-offset));
+    color: var(--text-primary);
+    max-width: 100%;
+    text-align: center;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}

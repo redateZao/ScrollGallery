@@ -1,0 +1,63 @@
+# Python
+__pycache__/
+.cache/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Testing / coverage
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.mypy_cache/
+
+# IDE / editors
+.idea/
+.vscode/
+*.iml
+
+# OS generated files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs
+*.log
+
+# ===== 开发阶段专用文件（不随发布，公开仓库无需） =====
+# mock 时代的假数据与假缩略图：真实图片由后端 HTTP 服务读取本地目录，
+# 缩略图由 backend/thumbnail.py 运行时动态生成，这些静态资源均不被 index.html 引用
+frontend/js/mock.js
+frontend/images/
+frontend/thumbs/
+
+# PyInstaller 产物与中间文件（build/、dist/ 已在顶部通用段忽略）
+*.manifest
+
+# 个人笔记 / 设计草稿
+note/
+plan/
+script/
