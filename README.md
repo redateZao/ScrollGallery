@@ -4,6 +4,8 @@
 
 **在 Windows 上，像读条漫一样浏览本地漫画与图集。**
 
+**视频介绍请 [点击这里跳转](https://www.bilibili.com/video/BV1eQnd6qEwp/?spm_id_from=333.1007.top_right_bar_window_history.content.click&vd_source=3b7f6a8696c949ede43b5af635de3e39)**
+
 **>>&nbsp;&nbsp;&nbsp;&nbsp;[功能介绍](#功能介绍)&nbsp;&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;&nbsp;[下载与使用](#下载与使用)&nbsp;&nbsp;&nbsp;&nbsp;<<**
 
 <table>
