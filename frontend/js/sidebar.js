@@ -99,16 +99,28 @@ function saveFavDirs(list) {
 // Windows 路径大小写不敏感：统一按小写比较，避免同目录因大小写不同被重复收藏
 function isFavDir(p) { return loadFavDirs().some(x => x.toLowerCase() === p.toLowerCase()); }
 // 存储数组的顺序即“收藏先后”：新收藏追加到末尾，取消则就地移除。
-// 显示时降序=最后收藏的在前（见 renderFavList 的 reverse）。不再做“按旧下标回插原位”：
-// 下标会随后续增删漂移，反复收藏/取消后会把目录插到错误位置导致顺序乱。
+// 不再做“无限期按旧下标回插”：下标会随后续增删漂移，反复收藏/取消后会把目录插到错误位置。
+// 但支持“紧邻一步撤销”（favUndo）：取消后紧接着点回同一个目录 → 插回原下标，与收藏清单里
+// “星只变色不重渲染”的乐观视图保持一致（否则切走再切回时该目录会突然跳到首位）。
+// 撤销窗口只在“紧邻的下一步、且路径相同”时有效：期间有任何其它收藏增删（新收藏/换了另一个取消）
+// 都会被覆盖或作废，因此记录的下标永远指向它被删除时的真实位置，不存在漂移。
+let favUndo = null;            // { key, index }：最近一次取消收藏的原位置；null=无待撤销
 function toggleFavorite(p) {
     const list = loadFavDirs();
     const key = p.toLowerCase();
     const i = list.findIndex(x => x.toLowerCase() === key);
     if (i === -1) {
-        list.push(p);                       // 新收藏追加到末尾 → 顺序恒等于收藏时间先后，可预测
+        if (favUndo && favUndo.key === key) {
+            // 上一步刚取消的就是它 → 撤销：插回原下标（min 仅防御性兜底，正常时必在范围内）
+            list.splice(Math.min(favUndo.index, list.length), 0, p);
+            favUndo = null;
+        } else {
+            list.push(p);      // 全新收藏（或撤销窗口已失效）→ 追加到末尾
+            favUndo = null;    // 新收藏作废撤销窗口
+        }
         saveFavDirs(list); return true;
     }
+    favUndo = { key, index: i };                  // 记录取消位置，供紧邻一步撤销；再取消别的会自动顶掉
     list.splice(i, 1); saveFavDirs(list); return false;               // 取消收藏
 }
 function baseName(p) {
