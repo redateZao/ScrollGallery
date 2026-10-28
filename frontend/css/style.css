@@ -1246,6 +1246,7 @@ html, body {
 
 #dir-list {
     list-style: none;
+    position: relative;   /* 收藏拖动重排的白线(.fav-drop-line)绝对定位参照（线是 #dir-list 直接子元素）*/
 }
 
 /* 列表空态占位文字（如「收藏」无内容时）：绝对定位到 #sidebar 正中（脱离流、垂直居中，不随内容滚动），置灰、随字号缩放 */
@@ -1425,6 +1426,52 @@ html, body {
     transform: none;            /* 取消基类 translateY(-50%) */
     display: block;             /* 收藏行星常驻：黄/灰两种状态都可见（便于点灰星重新收藏）*/
     color: #9a9a9a;             /* 未收藏=灰色（.faved 时由下方高特异性规则覆盖成黄色）*/
+}
+
+/* ===== 收藏清单长按拖动重排（长按 300ms 拾起 → 幽灵跟手 + 白线指示插入缝 → 松手落位）===== */
+/* 被拖行的原位置：背景高亮（比 hover 的 0.06 更亮的 0.14，与原有深色底明显区分），
+   保留全彩不变灰—“此行正被抓起”的高亮信号 */
+.dir-item.fav-dragging {
+    background: rgba(255, 255, 255, 0.14);   /* 提亮背景：能区分于常态与 hover */
+}
+
+/* 幽灵行：原行的半透明克隆，固定定位。宽度与左缘（left）均在拾起时由 JS 一次性设定（宽=行宽 70%、水平居中于行的中心线），
+   拖动中只搬 top → 因此它始终沿着侧栏中心竖线上下移动，不会随鼠标左右飘。
+   不再整体缩放——字号保持与列表一致；改以「只显示 3 行文字高」收窄体积：隐藏星星、预览图与名字都压到 3 行。
+   pointer-events:none 不拦截按住移动与松手判定 */
+.fav-drag-ghost {
+    position: fixed;
+    z-index: 1000;               /* 盖过所有行与白线 */
+    pointer-events: none;
+    margin: 0;
+    opacity: 0.8;                /* 半透明：明示这是预览拷贝而非真实行 */
+    background: rgb(50, 50, 51);
+    border-radius: 6px;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.6);   /* 投影营造“浮在列表之上”的高度感 */
+}
+.fav-drag-ghost .fav-star-slot { display: none; }   /* 迷你目录不显示星星 */
+/* 预览图与名字统一压到 3 行文字高（--fav-line-h 随字号缩放，故“3 行”自适应字号） */
+.fav-drag-ghost .fav-thumb {
+    height: calc(var(--fav-line-h) * 3);
+    width: calc(var(--fav-line-h) * 3 * 2.5 / 3);
+}
+.fav-drag-ghost .dir-name {
+    -webkit-line-clamp: 3;
+}
+
+/* 插入位置白线：2px 横线绝对定位在 #dir-list 内，JS 按鼠标 Y 落在哪两行之间实时搬 top；
+   所有缝隙（含被拖行自己的上/下缝）都会画线，落在自身缝=回原位，由 commitDrop 判无效不改数据；
+   pointer-events:none 不拦截按住移动与松手判定 */
+.fav-drop-line {
+    position: absolute;
+    left: 8px;
+    right: 8px;
+    height: 2px;
+    background: #ffffff;
+    border-radius: 1px;
+    pointer-events: none;
+    z-index: 4;
+    display: none;              /* 默认隐藏；拖到有效缝隙时由 JS 置 block */
 }
 
 /* ===== 全屏模式 ===== */

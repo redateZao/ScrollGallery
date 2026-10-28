@@ -189,10 +189,11 @@ async function renderFavList(opts) {
 }
 
 // 收藏行：复用 dir-item（悬浮/定位/黄星），加 fav-item 覆盖成「预览图 + 垂直居中名字」。
-// 点整行 → 进入该目录（openDir）；点右侧黄星 → 取消收藏并实时刷新收藏清单
+// 长按/单击整行 → 拖动重排 或 进入该目录（见 makeFavDraggable）；点右侧星占位区 → 切换收藏。
 function createFavEntry(name, previewUrl, path) {
     const li = document.createElement('li');
     li.className = 'dir-item fav-item';
+    li.dataset.favPath = path;      // 拖动重排时据此读回每行对应的收藏路径
 
     const thumb = document.createElement('div');
     thumb.className = 'fav-thumb';
@@ -221,6 +222,7 @@ function createFavEntry(name, previewUrl, path) {
     slot.innerHTML = STAR_ICON;
     const star = slot.querySelector('.dir-star');
     star.classList.add('faved');
+    slot.addEventListener('mousedown', (e) => e.stopPropagation());   // 星占位区不发起长按拖动
     slot.addEventListener('click', (e) => {
         e.stopPropagation();
         const nowFaved = toggleFavorite(path);        // 黄→灰同时从收藏数据移除；灰→黄重新加入（可撤销）
@@ -228,8 +230,154 @@ function createFavEntry(name, previewUrl, path) {
     });
     li.appendChild(slot);
 
-    li.addEventListener('click', () => openDir(path));
+    makeFavDraggable(li, path);   // 长按拖动重排；未满长按阈值的短按 = 进入目录
     return li;
+}
+
+// ===== 收藏清单「长按拖动重排」 =====
+// 交互链：按下整行 → 满 FAV_DRAG_DELAY = “拾起”：原行高亮留槽（拾起后再移动鼠标也不中断），
+// 同时一个半透明幽灵行（原行克隆：只显示 3 行高、无星星、字号不变）跟随鼠标，光标变 grabbing；
+// 移动 → 白线实时指示松手会落进哪条缝（含被拖行自己的上/下缝：落在自身缝 = 回原位，不产生改动）；
+// 拖到列表上/下边缘附近自动滚动，方便把行拖到当前屏幕之外的位置（收藏清单很长时尤需）；
+// 松手：白线在有效位 → 重排并持久化 + 重渲染，否则取消；未满阈值就松开 → 照常进入目录（原单击）。
+// 导航不再依赖原生 click（mousedown 已 preventDefault 禁掉原生图片拖拽），由 mouseup 手动判定。
+// 降序显示是存储数组的镜像：全部先在“视觉顺序”里算，最后一步反转映射回存储数组。
+const FAV_DRAG_DELAY = 200;   // 长按多少 ms 拾起该行
+const FAV_SCROLL_EDGE = 40;   // 拖到距滚动容器上/下边缘多少 px 内触发自动滚动
+const FAV_SCROLL_STEP = 8;    // 自动滚动时每帧滚动的像素
+let favDragRow = null;        // 当前被拖的 li（同一时刻至多一个拖拽）
+
+function makeFavDraggable(li, path) {
+    li.addEventListener('mousedown', (e) => {
+        if (e.button !== 0 || favDragRow) return;
+        e.preventDefault();                       // 禁原生图片拖拽/文字选中；导航改由下方 mouseup 判定
+        const startY = e.clientY;                 // 按下纵坐标（拾起时供初始定位参考）
+        let lastY = startY;                       // 最近一次鼠标纵坐标（自动滚动时据此重画白线）
+        let picked = false;                       // 是否已长按“拾起”
+        let lineEl = null;                        // 插入白线（拾起时才创建）
+        let ghostEl = null;                       // 跟鼠标的半透明克隆行（拾起时创建）
+        let ghostOY = 0;                          // 幽灵行纵向抓取偏移（自身半高，使其垂直居中于指针）
+        let insertAt = -1;                        // 白线指向的视觉插入位（-1 = 尚未画线）
+        let scrollDir = 0;                        // 自动滚动方向：-1 上 / 0 停 / +1 下
+        let scrollRaf = null;                     // 自动滚动 rAF 句柄
+
+        const timer = setTimeout(() => {
+            picked = true;
+            favDragRow = li;
+            // 先克隆再给原行加高亮态：幽灵保持正常外观（靠 CSS 压到 3 行高、隐星）；挂 body 下固定定位跟手
+            const r = li.getBoundingClientRect();
+            ghostEl = li.cloneNode(true);
+            ghostEl.removeAttribute('style');
+            ghostEl.classList.add('fav-drag-ghost');
+            ghostEl.style.width = Math.round(r.width * 0.7) + 'px';   // 迷你目录宽=侧栏(行)宽的 70%
+            ghostEl.style.left = Math.round(r.left + r.width * 0.15) + 'px';   // 水平居中于行（两侧各留 15%）：沿侧栏中心竖线上下移动
+            document.body.appendChild(ghostEl);
+            // 幽灵行已被 CSS 压成 3 行高（比原行矮）：纵向抓取偏移取自身半高，使其垂直居中于指针
+            ghostOY = ghostEl.getBoundingClientRect().height / 2;
+            li.classList.add('fav-dragging');     // 原行高亮：此行正被抓起
+            document.body.style.userSelect = 'none';
+            document.body.style.cursor = 'grabbing';
+            positionGhost(lastY);
+            lineEl = document.createElement('div');
+            lineEl.className = 'fav-drop-line';
+            dirListEl.appendChild(lineEl);
+            startAutoScroll();
+        }, FAV_DRAG_DELAY);
+
+        function positionGhost(y) {
+            if (!ghostEl) return;
+            ghostEl.style.top = (y - ghostOY) + 'px';   // left 已在拾起时钉死，只上下移动
+        }
+        function onMove(ev) {
+            lastY = ev.clientY;
+            // 拾起前移动不再取消长按：长按过程中手抖/小幅移动仍应正常进入拖动态
+            if (!picked) return;
+            positionGhost(ev.clientY);
+            updateLine(ev.clientY);
+            scrollDir = computeScrollDir(ev.clientY);
+        }
+        // 自动滚动：拖动中鼠标靠近滚动容器上/下边缘时逐帧滚动，把远处的行“拉”到指针下；
+        // 指针不动、内容在动，故滚动后需按最后一次的 clientY 重算白线
+        function computeScrollDir(clientY) {
+            if (!sidebarContentEl) return 0;
+            const rect = sidebarContentEl.getBoundingClientRect();
+            if (clientY < rect.top + FAV_SCROLL_EDGE) return -1;
+            if (clientY > rect.bottom - FAV_SCROLL_EDGE) return 1;
+            return 0;
+        }
+        function scrollStep() {
+            if (!picked) { scrollRaf = null; return; }
+            if (scrollDir !== 0) {
+                const before = sidebarContentEl.scrollTop;
+                sidebarContentEl.scrollTop += scrollDir * FAV_SCROLL_STEP;
+                if (sidebarContentEl.scrollTop !== before) updateLine(lastY);   // 内容真动了才重画线
+            }
+            scrollRaf = requestAnimationFrame(scrollStep);
+        }
+        function startAutoScroll() { if (scrollRaf == null) scrollRaf = requestAnimationFrame(scrollStep); }
+        function stopAutoScroll() { if (scrollRaf != null) { cancelAnimationFrame(scrollRaf); scrollRaf = null; } }
+        function onUp(ev) {
+            clearTimeout(timer);
+            stopAutoScroll();
+            document.removeEventListener('mousemove', onMove);
+            document.removeEventListener('mouseup', onUp);
+            window.removeEventListener('blur', onUp);
+            if (picked) {
+                if (insertAt >= 0) commitDrop();
+                if (lineEl) lineEl.remove();
+                if (ghostEl) ghostEl.remove();
+                li.classList.remove('fav-dragging');
+                document.body.style.userSelect = '';
+                document.body.style.cursor = '';
+                favDragRow = null;
+                return;
+            }
+            // 未拾起即松开：仍在行内 → 进入目录（等价原单击）；blur 兜底时坐标缺失，自然不进
+            const r = li.getBoundingClientRect();
+            if (ev.clientX >= r.left && ev.clientX <= r.right && ev.clientY >= r.top && ev.clientY <= r.bottom) openDir(path);
+        }
+        // 按鼠标 Y 与各行的垂直中线比较，得出“落在哪两行之间”；所有缝隙（含自身上/下缝）都画线，
+        // 保证拖动全程反馈连续；落在自身缝等于回原位，由 commitDrop 判无效不改数据
+        function updateLine(clientY) {
+            insertAt = -1;
+            lineEl.style.display = 'none';
+            if (!li.isConnected) return;                    // 视图已切换（异常态）：不画线
+            const rows = Array.from(dirListEl.querySelectorAll('.fav-item'));
+            const from = rows.indexOf(li);
+            if (from === -1 || rows.length < 2) return;     // 行已被外部移除 / 只有一行：无可重排
+            let at = rows.length;                           // 默认落在最后一行之下
+            for (let k = 0; k < rows.length; k++) {
+                const r = rows[k].getBoundingClientRect();
+                if (clientY < r.top + r.height / 2) { at = k; break; }
+            }
+            const cont = dirListEl.getBoundingClientRect();
+            let y;
+            if (at === 0) y = rows[0].getBoundingClientRect().top;
+            else if (at === rows.length) y = rows[rows.length - 1].getBoundingClientRect().bottom;
+            else y = (rows[at - 1].getBoundingClientRect().bottom + rows[at].getBoundingClientRect().top) / 2;
+            insertAt = at;
+            lineEl.style.top = Math.round(y - cont.top) + 'px';
+            lineEl.style.display = 'block';
+        }
+        // 白线位置是“含被拖行”的视觉插入位：先摘自己、按 to>from 修正下标，再插回；
+        // 降序显示时再把视觉顺序反转回存储数组序。重排使旧撤销下标失效 → favUndo 作废。
+        function commitDrop() {
+            const rows = Array.from(dirListEl.querySelectorAll('.fav-item'));
+            const from = rows.indexOf(li);
+            if (from === -1) return;
+            if (insertAt === from || insertAt === from + 1) return;   // 落在自身缝：回原位，不写数据不重渲染
+            const vis = rows.map(r => r.dataset.favPath);
+            const moved = vis.splice(from, 1)[0];
+            vis.splice(insertAt > from ? insertAt - 1 : insertAt, 0, moved);
+            saveFavDirs(favSortDesc ? vis.reverse() : vis);
+            favUndo = null;
+            renderFavList();   // 重渲染（滚动位置由既有 capture/restore 机制保持）
+        }
+
+        document.addEventListener('mousemove', onMove);
+        document.addEventListener('mouseup', onUp);
+        window.addEventListener('blur', onUp);    // 失焦兜底：拖到一半切窗口也能收尾
+    });
 }
 
 async function renderDirectory(dirPath, opts) {
