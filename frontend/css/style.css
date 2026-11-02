@@ -1246,7 +1246,13 @@ html, body {
 
 #dir-list {
     list-style: none;
-    position: relative;   /* 收藏拖动重排的白线(.fav-drop-line)绝对定位参照（线是 #dir-list 直接子元素）*/
+}
+
+/* 收藏拖动重排的插入白线(.fav-drop-line)以 #dir-list 为绝对定位参照：仅当白线存在时才把 #dir-list 提为定位上下文。
+   平时保持 static——这样空态提示 .dir-empty（同样绝对定位）的参照仍是满高的 #sidebar，能居中在侧栏正中，
+   不会被塌成 0 高的 #dir-list 拽到顶部（拖动只在有收藏行时发生，此时不存在 .dir-empty，二者互不冲突）。 */
+#dir-list:has(.fav-drop-line) {
+    position: relative;
 }
 
 /* 列表空态占位文字（如「收藏」无内容时）：绝对定位到 #sidebar 正中（脱离流、垂直居中，不随内容滚动），置灰、随字号缩放 */
