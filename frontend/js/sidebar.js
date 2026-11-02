@@ -549,20 +549,31 @@ if (window.pywebview) {
 // 算完写回内联 --sidebar-width；CSS :root 里的 --sidebar-width 仅作取不到 thumb-w 时的回退值。
 // 全局函数：启动调一次；main.js 切换缩略图尺寸档 / 列数（点「保存」）后也调它，让侧栏宽度实时跟随重算。
 function refitSidebarWidth() {
+    const cols = window.sidebarColCount | 0;   // 生效列数：0=手动，1~8=数字档
+    const maxW = document.getElementById('app').clientWidth * 0.5;   // 上限取 app 宽的 50%（与拖拽同基准）
+    const minW = sidebarMinWidthPx();          // 下限：thumb-w + 55（与拖拽侧栏同一最小宽公式）
+    // 「手动」档：宽度直接用拖拽落定并持久化的像素值（不走列数公式）；钳到 [minW, maxW]；无有效存储值时回退按默认列数算
+    if (cols === 0 && window.sidebarCustomWidth > 0) {
+        document.documentElement.style.setProperty('--sidebar-width', `${Math.max(minW, Math.min(window.sidebarCustomWidth, maxW))}px`);
+        return;
+    }
     const thumbW = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--thumb-w'));
     if (isNaN(thumbW)) return;                        // 取不到就沿用 CSS :root 里的回退值
-    const cols = (window.sidebarColCount | 0) || 3;   // 生效列数（1~8），取不到回退 3
+    const n = cols || 3;                              // 数字列数（1~8），异常回退 3
     const gap = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--thumb-gap')) || 3;
-    const width = thumbW * cols + (cols - 3) * gap + 62;   // cols=3 时退化为旧公式 thumbW*3 + 62
-    // 窗口模式：阈值上限取 app 宽的 50%（与拖拽同基准）；算出的默认宽超阈则夹到阈值，否则用计算值
-    const maxW = document.getElementById('app').clientWidth * 0.5;
+    const width = thumbW * n + (n - 3) * gap + 62;   // n=3 时退化为旧公式 thumbW*3 + 62
     document.documentElement.style.setProperty('--sidebar-width', `${Math.min(width, maxW)}px`);
+}
+// 侧栏最小宽度：thumb-w + 55（盒子宽 + padding38 + 进度条16 + 1px 微调），按当前 --thumb-w 实时取值；取不到回退 175
+function sidebarMinWidthPx() {
+    const tw = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--thumb-w'));
+    return isNaN(tw) ? 175 : tw + 55;
 }
 refitSidebarWidth();   // 启动算一次（main.js 已先行把 --thumb-w 恢复为持久化档位）
 
 // ===== 侧栏宽度可拖拽调节 =====
 // 只改写根上的 --sidebar-width（工具栏/页码/悬浮滚动条/图片区都引用它，会自动跟随）。
-// 故意不写 localStorage：刷新（=重启）后回到默认宽度（启动时按 thumb-w × 3 + 76 算出，见上方 initSidebarDefaultWidth）。
+// 拖拽落定（宽度确有变化）时调 window.applyManualSidebarWidth：记为「手动」档并持久化，重启后仍是这个宽度。
 (function initSidebarResizer() {
     const resizer = document.getElementById('sidebar-resizer');
     const sidebar = document.getElementById('sidebar');
@@ -570,16 +581,18 @@ refitSidebarWidth();   // 启动算一次（main.js 已先行把 --thumb-w 恢�
     if (!resizer) return;
 
     const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
-    // 侧栏最小宽度：thumb-w + 55（盒子宽 + padding38 + 进度条16 + 1px 微调），按当前 --thumb-w 实时取值；取不到则回退 175
-    const sidebarMinWidth = () => {
-        const tw = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--thumb-w'));
-        return isNaN(tw) ? 175 : tw + 55;   // 上限仍为 app 宽的 50%（拖拽 / 缩窄夹取都用这个下限）
-    };
+    const readWidth = () => parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--sidebar-width'));
+    const DRAG_EPSILON = 2;   // px：落定时宽度变化小于此阈值视为“纯点击把手/手抖”，不落库、不切手动档
     let dragging = false;
+    let dragStartWidth = NaN;   // 本次拖拽起始宽（保留 NaN 语义，不用 0 兜底，否则读不到宽度时纯点击会误判为“拖过”）
+    let dragStartX = 0;         // 本次拖拽按下时的鼠标 X（增量式映射的基准，避免起始跳变）
 
     resizer.addEventListener('mousedown', (e) => {
+        if (e.button !== 0) return;                         // 仅左键可调宽：屏蔽右键/中键（本应用已屏蔽系统右键菜单，右键拖把手会误落库）
         if (sidebar.classList.contains('collapsed')) return; // 收起态不可调
         dragging = true;
+        dragStartWidth = readWidth();
+        dragStartX = e.clientX;
         appEl.classList.add('resizing');                    // 关闭过渡，拖动跟手
         document.body.style.userSelect = 'none';            // 防拖动时选中文字/图片
         e.preventDefault();
@@ -588,8 +601,9 @@ refitSidebarWidth();   // 启动算一次（main.js 已先行把 --thumb-w 恢�
     window.addEventListener('mousemove', (e) => {
         if (!dragging) return;
         const appW = appEl.clientWidth;
-        // 侧栏靠右：宽 = 视口右缘到鼠标当前 X 的距离；钳到 [170px, app 宽×0.5]
-        const w = clamp(window.innerWidth - e.clientX, sidebarMinWidth(), appW * 0.5);
+        // 侧栏靠右：新宽 = 起始宽 + 鼠标左移量（增量式，以按下点为基准）；钳到 [最小宽, app 宽×0.5]
+        // 增量式可避免“边界钉到光标”导致的起始跳变（把手偏离真边界 4~16px，绝对映射会让侧栏先向右缩一点）
+        const w = clamp(dragStartWidth + (dragStartX - e.clientX), sidebarMinWidthPx(), appW * 0.5);
         document.documentElement.style.setProperty('--sidebar-width', w + 'px');
     });
 
@@ -598,16 +612,25 @@ refitSidebarWidth();   // 启动算一次（main.js 已先行把 --thumb-w 恢�
         dragging = false;
         appEl.classList.remove('resizing');
         document.body.style.userSelect = '';
+        // 宽度确有“超过阈值”的变化才算拖过：落定为手动档并持久化（纯点击/手抖不动则不改模式、不落库）
+        const w = readWidth();
+        if (!Number.isNaN(w) && !Number.isNaN(dragStartWidth) && Math.abs(w - dragStartWidth) >= DRAG_EPSILON
+            && typeof window.applyManualSidebarWidth === 'function') {
+            window.applyManualSidebarWidth(w);
+        }
     });
 
-    // 窗口缩放时重新钳位侧栏宽度，避免超出 [170px, 50%] 范围后拖动时跳变
+    // 窗口缩放：手动档按新上限重算（能放下就回到记忆宽、放不下才夹），数字档仅临时夹取当前宽（均不覆盖已存的手动宽）
     window.addEventListener('resize', () => {
         if (sidebar.classList.contains('collapsed')) return;
+        if ((window.sidebarColCount | 0) === 0 && window.sidebarCustomWidth > 0) {
+            refitSidebarWidth();   // 手动档：从存储宽重新钳取，修复“窗口变窄被夹→再变宽不回弹”
+            return;
+        }
         const appW = appEl.clientWidth;
-        const raw = getComputedStyle(document.documentElement).getPropertyValue('--sidebar-width');
-        const currentW = parseFloat(raw);
+        const currentW = readWidth();
         if (isNaN(currentW)) return; // 取不到数值则不处理（--sidebar-width 始终为普通 px，parseFloat 可解析）
-        const clamped = clamp(currentW, sidebarMinWidth(), appW * 0.5);
+        const clamped = clamp(currentW, sidebarMinWidthPx(), appW * 0.5);
         if (clamped !== currentW) {
             document.documentElement.style.setProperty('--sidebar-width', clamped + 'px');
         }

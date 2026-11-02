@@ -567,11 +567,22 @@ html, body {
 
 /* ===== 设置面板（弹出在设置按钮左侧） ===== */
 #settings-panel {
+    /* 右锚偏移单一来源：收起态只改 --settings-right，right 与 max-width 自动同步（两者必须同基准，否则窄窗下算不准可用宽）*/
+    --settings-right: calc(var(--sidebar-width) + var(--settings-gap)); /* 工具栏右侧距 20 + 按钮宽 44 + 间隙 12 */
     position: absolute;
-    right: calc(var(--sidebar-width) + var(--settings-gap)); /* 工具栏右侧距 20 + 按钮宽 44 + 间隙 12 */
+    right: var(--settings-right);
     bottom: 20px; /* 与设置按钮底部对齐 */
     z-index: 30;
     width: calc(300px + var(--font-offset) * 14); /* 随字号加宽：「中」=300px 原貌，避免开关行文字（“隐藏…也生效”最长 13 字）变宽后把右侧开关挤出面板外 */
+    /* 横向视口约束：面板只锚右缘、宽度写死，窗口窄到“预览区宽 < 右锚偏移 + 面板宽”时左缘会算成负值而出屏被裁；
+       用 max-width 把宽度钳到“视口宽 - 右锚偏移 - 8px 左边距”，面板永远整块落在窗口内（侧栏最宽被钳到 50%，故可用宽≥半屏）*/
+    max-width: calc(100vw - var(--settings-right) - 8px);
+    /* 视口约束 + 内部滚动：窗口比面板矮时（min_size=800×600，低于本面板自然高）不让顶行出屏被裁，
+       而是在面板内部滚动；高度足够时内容不超 max-height，无高度差不出滚动条，外观与行为完全不变。
+       预留 40px = 下方 bottom 20px + 上方等量留白（不顶天）；滚动条占 16px 内容宽（见全局 ::-webkit-scrollbar）*/
+    max-height: calc(100vh - 40px);
+    overflow-y: auto;
+    overflow-x: hidden;   /* 必须显式写出：一个轴为 auto 时，另一轴的 visible 会被内核折算成 auto，内容略超就冒出横向条 */
     padding: 14px 16px;
     background: rgba(37, 37, 38, 0.95);
     border: 1px solid var(--border-color);
@@ -593,9 +604,9 @@ html, body {
     pointer-events: auto;
 }
 
-/* 侧栏收起时跟随工具栏移动 */
+/* 侧栏收起时跟随工具栏移动：只换 --settings-right 基准，right / max-width 随之重算（收起后可用宽变大）*/
 #sidebar.collapsed ~ #settings-panel {
-    right: var(--settings-gap);
+    --settings-right: var(--settings-gap);
 }
 
 .setting-row {
@@ -677,7 +688,10 @@ html, body {
     font-size: calc(13px + var(--font-offset));
     color: var(--text-primary);
     line-height: 1.35;
-    white-space: nowrap;          /* 不换行 */
+    /* 允许换行：原先 nowrap 是“面板宽度被写死”的产物（见上方 width 注释）；
+       面板被 max-width 钳窄后，nowrap 会让这行文字顶破面板把右侧开关挤出去。
+       正常宽度下（含各字号档）13 字仍放得下，不会无谓折行，仅在窄窗兜底时换行 */
+    white-space: normal;
 }
 
 .switch {
@@ -934,6 +948,11 @@ html, body {
 #shortcut-panel {
     width: calc((480px + var(--font-offset) * 20) * var(--shortcut-scale, 1)); /* 基础随字号加宽，再由 --shortcut-scale 在「大/特大/超大」档各 +10%（相对本档宽，非基于「中」）；「中」=1 → 480px 原貌；grid 1fr/1fr 保证两列等宽 */
     max-width: 90vw;
+    /* 视口约束 + 内部滚动：本面板自然高（「中」字号约 700px，逐字号档继续长高）高于窗口时，
+       遮罩的 align-items:center 会把超出量平摊到上下两侧 → 底部「保存/取消」被推出视口且无法滚到；
+       钳住盒子高度并让面板内部滚动后，无论窗口多矮 footer 都能滚到。预留 24px ＝上下各 12px 边距，不顶天立地 */
+    max-height: calc(100vh - 24px);
+    overflow-y: auto;
     padding: 20px 24px 24px;
     background: var(--bg-sidebar);
     border: 1px solid var(--border-color);

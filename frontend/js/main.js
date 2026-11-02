@@ -1169,27 +1169,55 @@ function commitThumbStep() {
     saveSetting(THUMB_STEP_KEY, thumbStepCommitted);
 }
 
-// ===== 侧栏默认列数：1~8（快捷键面板「预览图片列数」滑块驱动，点「保存」生效）=====
-// 列数只改侧栏“默认宽度”公式里的列数因子（见 sidebar.js 的 refitSidebarWidth），不改盒子尺寸；与尺寸档正交。
+// ===== 侧栏默认列数：0（「手动」）或 1~8（快捷键面板「预览图片列数」滑块驱动，点「保存」生效）=====
+// 数字档（1~8）只改侧栏“默认宽度”公式里的列数因子（见 sidebar.js 的 refitSidebarWidth），不改盒子尺寸；与尺寸档正交。
+// 「手动」档（值 0）：宽度不由列数公式算，而是用户用鼠标拖拽侧栏落定的像素值（持久化在 SIDEBAR_CUSTOM_WIDTH_KEY）。
 const SIDEBAR_COLS_KEY = 'imageviewer.sidebarCols';
+const SIDEBAR_CUSTOM_WIDTH_KEY = 'imageviewer.sidebarCustomWidth';   // 「手动」档记住的侧栏像素宽
+const SIDEBAR_COLS_MANUAL = 0;      // 「手动」档：宽度取持久化拖拽像素值，不走列数公式
 const SIDEBAR_COLS_DEFAULT = 3;
-const SIDEBAR_COLS_MIN = 1;
+const SIDEBAR_COLS_MIN = 1;         // 数字档下限（滑块最左另多一格「手动」=0，见渲染处）
 const SIDEBAR_COLS_MAX = 8;
 function clampCols(n) {
-    return Math.min(Math.max(Math.round(Number(n) || SIDEBAR_COLS_DEFAULT), SIDEBAR_COLS_MIN), SIDEBAR_COLS_MAX);
+    const v = Math.round(Number(n));
+    if (Number.isNaN(v)) return SIDEBAR_COLS_DEFAULT;   // 非法值回退默认（注意：不能用 Number(n)||DEFAULT，那会把 0「手动」误判成默认档）
+    return Math.min(Math.max(v, SIDEBAR_COLS_MANUAL), SIDEBAR_COLS_MAX);   // 允许 0（手动）~8
+}
+// 右侧档位文字：0 显示「手动」，1~8 显示数字
+function colsLabel(n) {
+    return n === SIDEBAR_COLS_MANUAL ? '手动' : String(n);
 }
 // 生效列数（点「保存」才变更）与面板草稿；启动从持久化恢复，并写入全局供 sidebar.js 的 refitSidebarWidth 读取
 let colsCommitted = clampCols(loadSetting(SIDEBAR_COLS_KEY, SIDEBAR_COLS_DEFAULT));
 let colsDraft = colsCommitted;
 window.sidebarColCount = colsCommitted;   // 此行先于 sidebar.js 执行，令侧栏默认宽度按恢复后的列数计算
+// 「手动」档宽度(px)：启动从持久化恢复并写入全局，供 refitSidebarWidth 在列数=0 时取用；无存储值时为 0（下方再回退按默认列数算）
+window.sidebarCustomWidth = loadSetting(SIDEBAR_CUSTOM_WIDTH_KEY, 0);
 
 // 提交草稿 → 生效：更新全局列数 + 让侧栏宽度实时重算到“刚好 N 列” + 持久化
 function commitCols() {
+    // 首次切到「手动」却从没拖拽过（无存储宽度）：把当前实时侧栏宽记为手动宽，避免宽度塌陷到默认
+    if (colsDraft === SIDEBAR_COLS_MANUAL && !(window.sidebarCustomWidth > 0)) {
+        const live = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--sidebar-width'));
+        if (!Number.isNaN(live)) { window.sidebarCustomWidth = Math.round(live); saveSetting(SIDEBAR_CUSTOM_WIDTH_KEY, window.sidebarCustomWidth); }
+    }
     colsCommitted = colsDraft;
     window.sidebarColCount = colsCommitted;
     if (typeof window.refitSidebarWidth === 'function') window.refitSidebarWidth();
     saveSetting(SIDEBAR_COLS_KEY, colsCommitted);
 }
+
+// 鼠标拖拽侧栏落定宽度时由 sidebar.js 调用：立即进入「手动」档并持久化宽度与模式（不等点「保存」，与拖拽即时生效的直觉一致）
+// 生效模式同步切到手动 → 下次打开设置面板，列数滑块自动落到「手动」档
+window.applyManualSidebarWidth = function (widthPx) {
+    const w = Math.round(widthPx);
+    if (Number.isNaN(w) || w <= 0) return;
+    window.sidebarCustomWidth = w;
+    colsCommitted = SIDEBAR_COLS_MANUAL;
+    window.sidebarColCount = SIDEBAR_COLS_MANUAL;
+    saveSetting(SIDEBAR_CUSTOM_WIDTH_KEY, w);
+    saveSetting(SIDEBAR_COLS_KEY, SIDEBAR_COLS_MANUAL);
+};
 
 // ===== 字体大小档（快捷键面板「调整字体大小」滑块驱动；点「保存」生效，持久化并恢复）=====
 // 机制：所有 font-size 写成 calc(基准 + var(--font-offset))，本档只改这一个变量即可整体缩放（见 style.css :root）。
@@ -1326,29 +1354,29 @@ function renderClickNavRows() {
     colsTitleRow.appendChild(colsTitleText);
     mouseList.appendChild(colsTitleRow);
 
-    // 滑块行：与“预览图大小”同款轨道+滑块，档位 1~8 直接用数字，右侧显示数字；拖动只改草稿，点「保存」才生效
+    // 滑块行：与“预览图大小”同款轨道+滑块；最左一格为「手动」(=0)，其余 1~8 用数字，右侧对应显示「手动」或数字；拖动只改草稿，点「保存」才生效
     const colsRow = document.createElement('li');
     colsRow.className = 'shortcut-row size-slider-row';
     const colsWrap = document.createElement('div');
     colsWrap.className = 'size-slider-wrap';
     const colsRange = document.createElement('input');
     colsRange.type = 'range';
-    colsRange.min = String(SIDEBAR_COLS_MIN);
+    colsRange.min = String(SIDEBAR_COLS_MANUAL);   // 最左多一格「手动」(=0)
     colsRange.max = String(SIDEBAR_COLS_MAX);
     colsRange.step = '1';
     colsRange.value = String(colsDraft);   // 反映当前草稿列数（打开面板时由生效值复制）
     colsRange.className = 'size-range';
     const colsTicks = document.createElement('div');
     colsTicks.className = 'slider-ticks size-ticks';   // size-ticks：额外补上最右一档的刻度
-    colsTicks.style.setProperty('--tick-intervals', String(SIDEBAR_COLS_MAX - SIDEBAR_COLS_MIN));   // 刻度数 = 档数减一
+    colsTicks.style.setProperty('--tick-intervals', String(SIDEBAR_COLS_MAX - SIDEBAR_COLS_MANUAL));   // 刻度数 = 档数(0~8 共 9 档)减一 = 8
     colsWrap.append(colsRange, colsTicks);
     const colsValue = document.createElement('span');
     colsValue.className = 'size-value';
-    colsValue.textContent = String(colsDraft);
-    // 拖动只改草稿并更新右侧数字；实际列数在点「保存」(commitCols) 后才变更
+    colsValue.textContent = colsLabel(colsDraft);
+    // 拖动只改草稿并更新右侧文字；实际列数在点「保存」(commitCols) 后才变更
     colsRange.addEventListener('input', () => {
         colsDraft = clampCols(colsRange.value);
-        colsValue.textContent = String(colsDraft);
+        colsValue.textContent = colsLabel(colsDraft);
     });
     colsRow.append(colsWrap, colsValue);
     mouseList.appendChild(colsRow);
